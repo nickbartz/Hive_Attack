@@ -18,6 +18,33 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="2DText.cpp" />
+    <ClCompile Include="controls.cpp" />
+    <ClCompile Include="Draw_Object.cpp" />
+    <ClCompile Include="loadShader.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="objloader.cpp" />
+    <ClCompile Include="Scene_Graph.cpp" />
+    <ClCompile Include="texture.cpp" />
+    <ClCompile Include="vboindexer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="2DText.h" />
+    <ClInclude Include="controls.h" />
+    <ClInclude Include="Draw_Object.h" />
+    <ClInclude Include="loadShader.h" />
+    <ClInclude Include="objloader.hpp" />
+    <ClInclude Include="Scene_Graph.h" />
+    <ClInclude Include="texture.hpp" />
+    <ClInclude Include="vboindexer.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="StandardShading.vertexshader" />
+    <None Include="StandardTransparentShading.fragmentshader" />
+    <None Include="TextFragmentShader.fragmentshader" />
+    <None Include="TextVertexShader.vertexshader" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{24F0DE5D-ED50-4B6C-A4C5-CD2B916FD61E}</ProjectGuid>
@@ -69,14 +96,22 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\Users\nbartz\Desktop\Code\C++\Projects\External Libraries\GLEW-2.1.0\glew-2.1.0\include;C:\Users\nbartz\Desktop\Code\C++\Projects\External Libraries\glfw-3.2.1\include;C:\Users\nbartz\Desktop\Code\C++\Projects\External Libraries\;C:\Users\nbartz\Desktop\Code\C++\Projects\Hive_Attack\Hive_Attack\Hive_Attack;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\nbartz\Desktop\Code\C++\Projects\External Libraries\GLEW-2.1.0\glew-2.1.0\lib\Release\Win32;C:\Users\nbartz\Desktop\Code\C++\Projects\External Libraries\glfw-3.2.1.bin.WIN32\lib-vc2015;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>glew32.lib;glew32s.lib;glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -114,8 +149,6 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
