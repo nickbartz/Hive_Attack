@@ -26,6 +26,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objloader.cpp" />
     <ClCompile Include="Scene_Graph.cpp" />
+    <ClCompile Include="Scene_Objects.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="vboindexer.cpp" />
   </ItemGroup>
@@ -33,7 +34,9 @@
     <ClInclude Include="2DText.h" />
     <ClInclude Include="controls.h" />
     <ClInclude Include="Draw_Object.h" />
+    <ClInclude Include="Global_Render_Variables.h" />
     <ClInclude Include="loadShader.h" />
+    <ClInclude Include="Scene_Objects.h" />
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="Scene_Graph.h" />
     <ClInclude Include="texture.hpp" />

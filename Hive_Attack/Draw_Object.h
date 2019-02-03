@@ -31,6 +31,6 @@ buffer_specs load_object_to_buffers(vector<glm::vec3> &indexed_vertices, vector<
 
 void assign_uniform_pointers(GLuint programID);
 
-void Draw_Object(GLFWwindow* window, GLuint shader_program, buffer_specs model_specs, glm::vec3 lightPos, glm::mat4 scale_matrix, glm::mat4 transform_matrix, glm::mat4 rotation_matrix);
+void Draw_Object(GLFWwindow* window, GLuint shader_program, buffer_specs model_specs, glm::vec3 lightPos, glm::mat4 scale_matrix, glm::mat4 transform_matrix, glm::mat4 rotation_matrix, glm::vec3 Base_Color);
 
 void Cleanup_Object(buffer_specs* object_specs);

@@ -27,6 +27,7 @@ GLuint ModelMatrixID;
 GLuint Texture;
 GLuint TextureID;
 GLuint LightID;
+GLuint ColorID;
 
 buffer_specs load_object_to_buffers(vector<glm::vec3> &indexed_vertices, vector<glm::vec2> indexed_uvs, vector<glm::vec3> indexed_normals, vector<unsigned short> indices)
 {
@@ -72,19 +73,17 @@ void assign_uniform_pointers(GLuint programID)
 	ModelMatrixID = glGetUniformLocation(programID, "M");
 	TextureID = glGetUniformLocation(programID, "myTextureSampler");
 	LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
-
+	ColorID = glGetUniformLocation(programID, "BaseColor");
 }
 
-void Draw_Object(GLFWwindow* window, GLuint shader_program, buffer_specs model_specs, glm::vec3 lightPos, glm::mat4 scale_matrix, glm::mat4 transform_matrix, glm::mat4 rotation_matrix)
+void Draw_Object(GLFWwindow* window, GLuint shader_program, buffer_specs model_specs, vec3 lightPos, mat4 scale_matrix, mat4 transform_matrix, mat4 rotation_matrix, vec3 Base_Color)
 {
 	// Use our shader
 	glUseProgram(shader_program);
 
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
-
 	glm::mat4 ModelMatrix = transform_matrix * rotation_matrix * scale_matrix;
-
 	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
 	// Send our transformation to the currently bound shader, 
@@ -94,6 +93,7 @@ void Draw_Object(GLFWwindow* window, GLuint shader_program, buffer_specs model_s
 	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
 
 	glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(ColorID, Base_Color.x, Base_Color.y, Base_Color.z);
 
 	// Set our "myTextureSampler" sampler to use Texture Unit 0
 	glUniform1i(TextureID, 0);
