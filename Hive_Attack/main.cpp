@@ -82,11 +82,12 @@ int main()
 
 	// Create and compile our GLSL program from the shaders
 	GLuint programID = LoadShaders("StandardShading.vertexshader", "StandardTransparentShading.fragmentshader");
+	GLuint Instance_Render_Shader = LoadShaders("Instance_Render.vertexshader", "Instance_Render.fragmentshader");
 
 	init_scene_graph();
 	
 	// Get a handle for our "LightPosition" uniform
-	glm::vec3 lightPos = glm::vec3(10, 10, 10);
+	glm::vec3 lightPos = glm::vec3(0, 10, 10);
 
 	// For speed computation
 	double lastTime = glfwGetTime();
@@ -104,27 +105,27 @@ int main()
 	do {
 
 		// Measure speed
-		//double currentTime = glfwGetTime();
-		//nbFrames++;
-		//if (currentTime - lastTime >= 1.0) { // If last prinf() was more than 1sec ago
-		//									 // printf and reset
-		//	printf("%f ms/frame, %f FPS\n", 1000.0 /double(nbFrames), double(nbFrames));
-		//	nbFrames = 0;
-		//	lastTime += 1.0;
-		//}
+		double currentTime = glfwGetTime();
+		nbFrames++;
+		if (currentTime - lastTime >= 1.0) { // If last prinf() was more than 1sec ago
+											 // printf and reset
+			printf("%f ms/frame, %f FPS\n", 1000.0 /double(nbFrames), double(nbFrames));
+			nbFrames = 0;
+			lastTime += 1.0;
+		}
 
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glfwSetMouseButtonCallback(window, mouse_button_callback);
-		glfwSetScrollCallback(window, scroll_button_callback);
-		
+
+		// Update
 		update_scene_graph();
 
 		// Draw
 		computeMatricesFromInputs(window);
-		assign_uniform_pointers(programID);
-		draw_scene_graph(window, programID,lightPos);
+		assign_uniform_pointers(programID, Instance_Render_Shader);
+		draw_scene_graph(window, programID, Instance_Render_Shader, lightPos);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -136,6 +137,7 @@ int main()
 
 	cleanup_scene_graph();
 	glDeleteProgram(programID);
+	glDeleteProgram(Instance_Render_Shader);
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();

@@ -91,5 +91,11 @@
     <None Include="StandardShading.vertexshader">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="Instance_Render.fragmentshader">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Instance_Render.vertexshader">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -28,6 +28,8 @@
 using namespace std;
 using namespace glm;
 
+// HIVE SHIP
+
 void Ship_Object::ship_init(glm::vec3 start_location, vec3 _orbit_location)
 {
 	//loadOBJ_no_uvs("Basic_Ship.obj", vertices, uvs, normals);
@@ -37,6 +39,37 @@ void Ship_Object::ship_init(glm::vec3 start_location, vec3 _orbit_location)
 	update_transform_matrix(start_location);
 
 	orbit_location = _orbit_location;
+	home_orbit_location = _orbit_location;
+}
+
+bool Ship_Object::is_active()
+{
+	return active;
+}
+
+bool Ship_Object::is_engaged()
+{
+	return engaged;
+}
+
+void Ship_Object::set_engaged(bool _engaged)
+{
+	engaged = _engaged;
+}
+
+int Ship_Object::get_major_array_id()
+{
+	return major_array_id;
+}
+
+void Ship_Object::set_major_array_id(int _major_array_id)
+{
+	major_array_id = _major_array_id;
+}
+
+void Ship_Object::set_active(bool _active)
+{
+	active = _active;
 }
 
 void Ship_Object::update_rotation_matrix(glm::vec3 euler_rotation_vector)
@@ -67,9 +100,19 @@ void Ship_Object::increment_transform_matrix(glm::vec3 current_direction_vector)
 	update_transform_matrix(current_transform_vector);
 }
 
-void Ship_Object::load_buffer_return_specs()
+vec3 Ship_Object::return_current_transform_vector()
 {
-	loaded_specs = load_object_to_buffers(indexed_vertices, indexed_uvs, indexed_normals, indices);
+	return current_transform_vector;
+}
+
+vec3 Ship_Object::return_current_rotation_vector()
+{
+	return current_rotation_vector;
+}
+
+vec3 Ship_Object::return_home_orbit()
+{
+	return home_orbit_location;
 }
 
 void Ship_Object::rotate_directional_vector(float angle)
@@ -85,6 +128,11 @@ void Ship_Object::set_new_orbit(glm::vec3 _orbit_location)
 {
 	orbit_location = _orbit_location;
 	steady_orbit = false;
+}
+
+void Ship_Object::set_home_orbit(vec3 _home_orbit_location)
+{
+	home_orbit_location = _home_orbit_location;
 }
 
 float Ship_Object::calculate_distance_from_orbit_location()
@@ -109,7 +157,7 @@ float Ship_Object::calculate_distance_between_two_points(float x1, float z1, flo
 	return dd;
 }
 
-glm::vec3 Ship_Object::return_closest_orbit_entry_point()
+vec3 Ship_Object::return_closest_orbit_entry_point()
 {
 
 	float radius = orbit_distance;
@@ -194,6 +242,11 @@ void Ship_Object::calculate_needed_rotation_increment_from_goal(glm::vec3 goal_p
 
 void Ship_Object::move()
 {
+	if (current_engagement_focus != NULL)
+	{
+		orbit_location = current_engagement_focus->current_transform_vector;
+	}
+
 	float distance = calculate_distance_from_orbit_location();
 
 	if (distance < orbit_distance)
@@ -211,11 +264,9 @@ void Ship_Object::move()
 
 		float body_vel_x = (sin(angle) * grav_accel);
 		float body_vel_y = (cos(angle) * grav_accel);
-		
-
+	
 		if (direction) current_direction_vector = { body_vel_x, 0.0, -body_vel_y };
 		else current_direction_vector = { -body_vel_x, 0.0, body_vel_y };
-
 
 		vec3 origin_direction = orbit_location - current_transform_vector;
 		origin_direction *= distance / orbit_distance * 0.0001;
@@ -242,9 +293,280 @@ void Ship_Object::check_nearby_targets()
 
 }
 
-// OCTOHEDRON SHAPE
+void Ship_Object::set_engagement_target(Ship_Object* ship_object)
+{
+	if (ship_object != NULL)
+	{
+		current_engagement_focus = ship_object;
+		ship_object->add_engaged_ship(this);
+		orbit_location = current_engagement_focus->return_current_transform_vector();
+		if (current_engagement_focus->direction == 0) direction = 0;
+		else direction = 1;
 
-void Octohedron::Init_Octo(glm::vec3 _translation_vector, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
+		engaged = true;
+	}
+}
+
+void Ship_Object::remove_engagement_target()
+{
+	current_engagement_focus->remove_engaged_ship(this);
+	orbit_location = home_orbit_location;
+	current_engagement_focus = NULL;
+}
+
+Ship_Object* Ship_Object::return_current_engagement_target()
+{
+	return current_engagement_focus;
+}
+
+void Ship_Object::Reduce_Ship_Health(float health_decrement)
+{
+	if (ship_health > 0.0)
+	{
+		ship_health -= health_decrement;
+	}
+}
+
+float Ship_Object::get_health()
+{
+	return ship_health;
+}
+
+float Ship_Object::return_ship_damage()
+{
+	return ship_damage;
+}
+
+void Ship_Object::set_ship_damage(float _ship_damage)
+{
+	ship_damage = _ship_damage;
+}
+
+void Ship_Object::add_engaged_ship(Ship_Object * ship_object)
+{
+	ships_engaging.push_back(ship_object);
+}
+
+void Ship_Object::remove_engaged_ship(Ship_Object* ship_object)
+{
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		if (ships_engaging[i] == ship_object) ships_engaging.erase(ships_engaging.begin() + i);
+	}
+}
+
+void Ship_Object::double_check_engaged_ships()
+{
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		if (ships_engaging[i]->is_active() == false) ships_engaging.erase(ships_engaging.begin() + i);
+	}
+}
+
+float Ship_Object::calculate_damage_from_engaging_ships()
+{
+	float damage = 0.0;
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		damage += ships_engaging[i]->return_ship_damage();
+	}
+
+	return damage;
+}
+
+// HIVE SHIP ARRAY MANIFEST 
+
+Hive_Ship_Array_Manifest::Hive_Ship_Array_Manifest()
+{
+
+}
+
+void Hive_Ship_Array_Manifest::add_hive_ship_array_to_manifest(Hive_Ship_Array* octohedron_ship_array_pointer)
+{
+	array_pointer_manifest.push_back(octohedron_ship_array_pointer);
+}
+
+void Hive_Ship_Array_Manifest::remove_hive_ship_array_from_manifest(Hive_Ship_Array* octohedron_ship_array_pointer)
+{
+	for (int i = 0; i < array_pointer_manifest.size(); i++)
+	{
+		if (array_pointer_manifest[i] = octohedron_ship_array_pointer) array_pointer_manifest.erase(array_pointer_manifest.begin() + i);
+	}
+}
+
+Hive_Ship_Array* Hive_Ship_Array_Manifest::Return_Ship_Array(int index)
+{
+	if (index < array_pointer_manifest.size() && index >= 0)
+	{
+		return array_pointer_manifest[index];
+	}
+}
+
+int Hive_Ship_Array_Manifest::Array_Begin()
+{
+	return 0;
+}
+
+int Hive_Ship_Array_Manifest::Array_End()
+{
+	return array_pointer_manifest.size();
+}
+
+
+// HIVE SHIP ARRAY
+
+Hive_Ship_Array::Hive_Ship_Array()
+{
+	uniq_id = rand() % 1000;
+}
+
+void Hive_Ship_Array::init_hive_ship_array(vec3 ship_color, float ship_damage)
+{
+	ship_array_color = ship_color;
+	ship_array_damage = ship_damage;
+}
+
+Ship_Object* Hive_Ship_Array::add_ship_to_array(vec3 current_location, vec3 orbit_location)
+{
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		if (Ship_Object_Array[i].is_active() == false)
+		{
+			Ship_Object new_ship;
+			new_ship.current_transform_vector = current_location;
+			new_ship.orbit_location = orbit_location;
+			new_ship.home_orbit_location = orbit_location;
+			new_ship.set_ship_damage(return_ship_array_damage());
+			new_ship.set_major_array_id(i);
+			Ship_Object_Array[i] = new_ship;
+			Ship_Object_Array[i].set_active(true);
+			if (i + 1 == max_list_pointer) max_list_pointer++;
+			num_ships_in_swarm++;
+			return &Ship_Object_Array[i];
+		}
+	}
+}
+
+void Hive_Ship_Array::remove_ship_from_array(Ship_Object* ship)
+{
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		if (Ship_Object_Array[i].get_major_array_id() == ship->get_major_array_id() && Ship_Object_Array[i].is_active() == true)
+		{
+			Ship_Object_Array[i].set_active(false);
+			if (i + 1 == max_list_pointer) max_list_pointer--;
+			num_ships_in_swarm--;
+			break;
+		}
+	}
+}
+
+Ship_Object* Hive_Ship_Array::return_ship_in_array(int index)
+{
+	if (Ship_Object_Array[index].is_active() == true) return &Ship_Object_Array[index];
+	else return NULL;
+}
+
+int Hive_Ship_Array::array_begin()
+{
+	return 0;
+}
+
+int Hive_Ship_Array::array_end()
+{
+	return max_list_pointer - 1;
+}
+
+int Hive_Ship_Array::return_ship_model_type()
+{
+	return ship_model_type;
+}
+
+int Hive_Ship_Array::return_uniq_id()
+{
+	return uniq_id;
+}
+
+vec3 Hive_Ship_Array::return_ship_array_color()
+{
+	return ship_array_color;
+}
+
+void Hive_Ship_Array::move_ships()
+{
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		Ship_Object_Array[i].move();
+	}
+}
+
+bool Hive_Ship_Array::is_engaged()
+{
+	return engaged;
+}
+
+void Hive_Ship_Array::set_engagement_target(Hive_Ship_Array* ship_array)
+{
+	engagement_target = ship_array;
+}
+
+void Hive_Ship_Array::set_ship_array_damage(float damage)
+{
+	ship_array_damage = damage;
+}
+
+float Hive_Ship_Array::return_ship_array_damage()
+{
+	return ship_array_damage;
+}
+
+vec3* Hive_Ship_Array::return_ships_transforms()
+{
+	int ship_index = 0;
+
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		Ship_Object* new_ship = return_ship_in_array(i);
+		if (new_ship != NULL && new_ship->is_active())
+		{
+			ship_transforms[ship_index] = new_ship->return_current_transform_vector();
+			ship_index++;
+		}
+	}
+
+	return ship_transforms;
+}
+
+vec3* Hive_Ship_Array::return_ships_rotations()
+{
+	int ship_index = 0;
+
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		Ship_Object* new_ship = return_ship_in_array(i);
+		if (new_ship != NULL && new_ship->is_active()) ship_rotations[ship_index] = new_ship->return_current_rotation_vector();
+	}
+	return ship_rotations;
+}
+
+int Hive_Ship_Array::return_num_ships_in_swarm()
+{
+	return num_ships_in_swarm;
+}
+
+void Hive_Ship_Array::set_engaged(bool _engaged)
+{
+	engaged = _engaged;
+}
+
+Hive_Ship_Array* Hive_Ship_Array::return_engaged_ship_array()
+{
+	return engagement_target;
+}
+
+// HIVE POD
+
+void Hive_Pod_Object::Init_Hive_Pod(glm::vec3 _translation_vector, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
 {
 	octohedron_coordinates = base_grid_coords + face_grid_offset;
 
@@ -252,11 +574,9 @@ void Octohedron::Init_Octo(glm::vec3 _translation_vector, Grid_Coord base_grid_c
 
 	init_squares(translation_vector);
 	init_hexagons(translation_vector);
-
-	octo_ship.ship_init(translation_vector, translation_vector);
 }
 
-void Octohedron::init_squares(vec3 translation_vector)
+void Hive_Pod_Object::init_squares(vec3 translation_vector)
 {
 	Square new_square;
 	new_square.init_square(octo_vertices["v1324"], octo_vertices["v2314"], octo_vertices["v2413"], octo_vertices["v1423"], translation_vector); // A+ (grid x + 2)
@@ -296,7 +616,7 @@ void Octohedron::init_squares(vec3 translation_vector)
 	square_array[5] = (new_square);
 }
 
-void Octohedron::init_hexagons(vec3 translation_vector)
+void Hive_Pod_Object::init_hexagons(vec3 translation_vector)
 {
 	Hexagon new_hexagon;
 	new_hexagon.init_hexagon(octo_vertices["v2314"], octo_vertices["v3214"], octo_vertices["v4213"], octo_vertices["v4312"], octo_vertices["v3412"], octo_vertices["v2413"], translation_vector); // C ( x + 1, z + 1, y + 1)
@@ -348,17 +668,17 @@ void Octohedron::init_hexagons(vec3 translation_vector)
 	hexagon_array[7] = (new_hexagon);
 }
 
-vec3 Octohedron::get_translation_vector()
+vec3 Hive_Pod_Object::get_translation_vector()
 {
 	return translation_vector;
 }
 
-vec3 Octohedron::get_scaled_translation_vector()
+vec3 Hive_Pod_Object::get_scaled_translation_vector()
 {
 	return { translation_vector.x*scale_vector.x, translation_vector.y*scale_vector.y, translation_vector.z*scale_vector.z };
 }
 
-void Octohedron::add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals)
+void Hive_Pod_Object::add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals)
 {
 	for (int i = 0; i < 6; i++)
 	{
@@ -377,7 +697,7 @@ void Octohedron::add_triangle_array_components(vector<glm::vec3> &vertices, vect
 	}
 }
 
-void Octohedron::check_for_total_obscurity()
+void Hive_Pod_Object::check_for_total_obscurity()
 {
 	all_squares_obscured = true;
 	// Conscious decision to limit square extrustion to the 4 squares on the sides (0-3), not the north and south facing squares
@@ -393,27 +713,35 @@ void Octohedron::check_for_total_obscurity()
 	}
 }
 
-void Octohedron::update_translation(vec3 translation_vector)
+void Hive_Pod_Object::update_translation(vec3 translation_vector)
 {
-	octo_ship.orbit_location = translation_vector;
-	octo_ship.current_transform_vector = translation_vector;
+	hive_ship_pointer->orbit_location = translation_vector;
+	hive_ship_pointer->set_home_orbit(translation_vector);
+	hive_ship_pointer->current_transform_vector = translation_vector;
 }
 
-// OCTOHEDRON ARRAY
+void Hive_Pod_Object::register_hive_ship(Ship_Object* _hive_ship)
+{
+	hive_ship_pointer = _hive_ship;
+}
 
-Octohedron_Array::Octohedron_Array()
+// HIVE OBJECT
+
+Hive_Object::Hive_Object()
 {
 
 }
 
-void Octohedron_Array::init_octohedron_array()
+void Hive_Object::Init_Hive_Object(vec3 _Hive_Color, float hive_damage)
 {
 	glm::quat MyQuaternion;
 	glm::vec3 EulerAngles({ 0.0f,0.0f,0.0f });
 	MyQuaternion = glm::quat(EulerAngles);
 	RotationMatrix = glm::toMat4(MyQuaternion);
-	
-	register_new_octohedron({ 0.0f, 0.0f,0.0f }, { 0,0,0 }, { 0,0,0 });
+	Hive_Color = _Hive_Color;
+	hive_ship_array.init_hive_ship_array(Hive_Color, hive_damage);
+
+	register_new_hive_pod({ 0.0f, 0.0f,0.0f }, { 0,0,0 }, { 0,0,0 });
 
 	update_model_vertices();
 
@@ -421,7 +749,7 @@ void Octohedron_Array::init_octohedron_array()
 	indexVBO(ship_vertices, ship_uvs, ship_normals, ship_indices, ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals);
 }
 
-void Octohedron_Array::update_translation_matrix(vec3 translation)
+void Hive_Object::update_translation_matrix(vec3 translation)
 {
 	TranslationMatrix = translate(translation);
 
@@ -431,19 +759,25 @@ void Octohedron_Array::update_translation_matrix(vec3 translation)
 	}
 }
 
-void Octohedron_Array::register_new_octohedron(vec3 translation_vector, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
+void Hive_Object::register_new_hive_pod(vec3 translation_vector, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
 {
-	Octohedron new_octo;
-	new_octo.Init_Octo(translation_vector, base_grid_coords, face_grid_offset);
+	Hive_Pod_Object new_octo;
+	new_octo.Init_Hive_Pod(translation_vector, base_grid_coords, face_grid_offset);
 	Grid_Coord new_grid_coords = new_octo.octohedron_coordinates;
 
 	cell_array[num_current_cells] = new_octo;
 	array_map[new_grid_coords] = &cell_array[num_current_cells];
+	register_new_hive_ship(&cell_array[num_current_cells], translation_vector, translation_vector);
 	Manage_Obscurity(&cell_array[num_current_cells]);
 	num_current_cells++;
 }
 
-void Octohedron_Array::extrude_new_octo()
+void Hive_Object::register_new_hive_ship(Hive_Pod_Object* hive_pod_pointer, vec3 translation_vector, vec3 orbit_center)
+{
+	hive_pod_pointer->hive_ship_pointer = hive_ship_array.add_ship_to_array(translation_vector, orbit_center);
+}
+
+void Hive_Object::extrude_new_octo()
 {
 	int array_index;
 	bool square_found = false;
@@ -466,7 +800,7 @@ void Octohedron_Array::extrude_new_octo()
 
 }
 
-void Octohedron_Array::extrude_from_square(int array_index)
+void Hive_Object::extrude_from_square(int array_index)
 {
 	glm::vec3 translation_vector;
 	int acceptable_faces[4] = { 0,1,2,3 };
@@ -477,7 +811,7 @@ void Octohedron_Array::extrude_from_square(int array_index)
 		{
 			translation_vector = cell_array[array_index].get_translation_vector() + cell_array[array_index].square_array[acceptable_faces[face_index]].tessallation_vector;
 
-			register_new_octohedron(translation_vector, cell_array[array_index].octohedron_coordinates, cell_array[array_index].square_array[acceptable_faces[face_index]].face_grid_offset);
+			register_new_hive_pod(translation_vector, cell_array[array_index].octohedron_coordinates, cell_array[array_index].square_array[acceptable_faces[face_index]].face_grid_offset);
 
 			return;
 		}
@@ -489,7 +823,7 @@ void Octohedron_Array::extrude_from_square(int array_index)
 	cout << "could not find square to extrude from - this should be impossible" << endl;
 }
 
-void Octohedron_Array::extrude_from_hexagon(int array_index)
+void Hive_Object::extrude_from_hexagon(int array_index)
 {
 	// Find the first hexagon that isn't obscured
 	int face_num = rand() % 8;
@@ -500,7 +834,7 @@ void Octohedron_Array::extrude_from_hexagon(int array_index)
 		{
 			translation_vector = cell_array[array_index].get_translation_vector() + cell_array[array_index].hexagon_array[face_num].tessallation_vector;
 
-			register_new_octohedron(translation_vector, cell_array[array_index].octohedron_coordinates, cell_array[array_index].hexagon_array[face_num].face_grid_offset);
+			register_new_hive_pod(translation_vector, cell_array[array_index].octohedron_coordinates, cell_array[array_index].hexagon_array[face_num].face_grid_offset);
 
 			return;
 		}
@@ -510,7 +844,7 @@ void Octohedron_Array::extrude_from_hexagon(int array_index)
 	}
 }
 
-void Octohedron_Array::Manage_Obscurity(Octohedron* octo)
+void Hive_Object::Manage_Obscurity(Hive_Pod_Object* octo)
 {
 	for (int i = 0; i < 6; i++)
 	{
@@ -549,7 +883,7 @@ void Octohedron_Array::Manage_Obscurity(Octohedron* octo)
 	}
 }
 
-void Octohedron_Array::update_model_vertices()
+void Hive_Object::update_model_vertices()
 {
 	vertices.clear();
 	uvs.clear();
@@ -568,10 +902,14 @@ void Octohedron_Array::update_model_vertices()
 	indexVBO(vertices, uvs, normals, indices, indexed_vertices, indexed_uvs, indexed_normals);
 }
 
-void Octohedron_Array::load_buffer_return_specs()
+void Hive_Object::load_buffer_return_specs()
 {
 	loaded_specs = load_object_to_buffers(indexed_vertices, indexed_uvs, indexed_normals, indices);
 
 	loaded_ship_specs = load_object_to_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
 }
 
+vec3 Hive_Object::return_hive_color()
+{
+	return Hive_Color;
+}

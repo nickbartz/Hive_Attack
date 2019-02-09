@@ -12,10 +12,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <Global_Render_Variables.h>
+#include<Draw_Object.h>
+//#include<Scene_Objects.h>
 
 #include<iostream>
 
-const int MAX_NUM_SHIPS_IN_MANIFEST = 1000;
+class Hive_Ship_Array;
+class Ship_Object;
+
+const int MAX_SHIPS_PER_HIVE = 1000;
 
 struct Grid_Coord
 {
@@ -58,6 +63,18 @@ void cleanup_scene_graph();
 
 void update_scene_graph();
 
-void draw_scene_graph(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos);
+void process_ship_damage(Ship_Object * ship_array);
+
+void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader, glm::vec3 lightPos);
 
 void Handle_Mouse_Click(double x_pos, double y_pos);
+
+model_buffer_specs* Return_Ship_Model_Buffer_Specs(int ship_model);
+
+void Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array);
+
+void Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer);
+
+void check_for_swarm_engagement_target(Hive_Ship_Array * ship_array);
+
+void check_ship_engagement_target(Ship_Object * ship, Hive_Ship_Array * swarm_two);

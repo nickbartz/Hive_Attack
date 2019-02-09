@@ -43,6 +43,8 @@
     <ClInclude Include="vboindexer.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Instance_Render.fragmentshader" />
+    <None Include="Instance_Render.vertexshader" />
     <None Include="StandardShading.vertexshader" />
     <None Include="StandardTransparentShading.fragmentshader" />
     <None Include="TextFragmentShader.fragmentshader" />

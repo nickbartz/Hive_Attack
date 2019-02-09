@@ -25,223 +25,175 @@
 using namespace std;
 using namespace glm;
 
-Octohedron_Array new_array;
-Octohedron_Array new_array_2;
+Hive_Object Hive_Object_Array[2];
+int num_hive_objects = 2;
 
-struct ship_node
-{
-	Ship_Object* ship;
-	ship_node* next;
-	bool active = false; // for the non-linked list version
-	int faction = 0; 
-};
+instanced_buffer_specs ship_instance_specs;
 
-struct Ship_Linked_List
-{
-	ship_node *head, *tail;
-	Ship_Linked_List()
-	{
-		head = NULL;
-		tail = NULL;
-	}
-
-	void insert_end(Ship_Object* new_ship)
-	{
-		ship_node *temp = new ship_node;
-		temp->ship = new_ship;
-		temp->next = NULL;
-		if (head == NULL)
-		{
-			head = temp;
-			tail = temp;
-			temp = NULL;
-		}
-		else
-		{
-			tail->next = temp;
-			tail = temp;
-		}
-	}
-
-	void display()
-	{
-		ship_node *temp = new ship_node;
-		temp = head;
-		while (temp != NULL)
-		{
-			cout << temp->ship << endl;
-			temp = temp->next;
-		}
-	}
-
-	void insert_start(Ship_Object* new_ship)
-	{
-		ship_node *temp = new ship_node;
-		temp->ship = new_ship;
-		temp->next = head;
-		head = temp;
-	}
-
-	void insert_position(int pos, Ship_Object* new_ship)
-	{
-		ship_node* pre = new ship_node;
-		ship_node* cur = new ship_node;
-		ship_node* temp = new ship_node;
-		cur = head;
-		for (int i = 1; i < pos; i++)
-		{
-			pre = cur;
-			cur = cur->next;
-		}
-		temp->ship = new_ship;
-		pre->next = temp;
-		temp->next = cur;
-	}
-
-	void delete_first()
-	{
-		ship_node *temp = new ship_node;
-		temp = head;
-		head = head->next;
-		delete temp;
-	}
-
-	void delete_last()
-	{
-		ship_node* current = new ship_node;
-		ship_node* previous = new ship_node;
-		current = head;
-		while (current->next != NULL)
-		{
-			previous = current;
-			current = current->next;
-		}
-		tail = previous;
-		previous->next = NULL;
-		delete current;
-	}
-
-	void delete_position(int pos)
-	{
-		ship_node* current = new ship_node;
-		ship_node* previous = new ship_node;
-		current = head;
-		for (int i = 1; i < pos; i++)
-		{
-			previous = current;
-			current = current->next;
-		}
-		previous->next = current->next;
-	}
-};
-
-struct Ship_Contiguous_List
-{
-	ship_node* ship_node_array[MAX_NUM_SHIPS_IN_MANIFEST];
-	int num_ships_in_manifest = 0;
-	int max_list_pointer = 1;
-
-	void add_ship_to_manifest(Ship_Object* ship)
-	{
-		for (int i = 0; i < max_list_pointer; i++)
-		{
-			if (ship_node_array[i]->active == false)
-			{
-				ship_node_array[i]->ship = ship;
-				ship_node_array[i]->active = true;
-				if (i + 1 == max_list_pointer) max_list_pointer++;
-				num_ships_in_manifest++;
-				break;
-			}
-		}
-	}
-
-	void remove_ship_from_manifest(Ship_Object* ship)
-	{
-		for (int i = 0; i < max_list_pointer; i++)
-		{
-			if (ship_node_array[i]->ship == ship && ship_node_array[i]->active == true)
-			{
-				ship_node_array[i]->active = false;
-				if (i + 1 == max_list_pointer) max_list_pointer--;
-				num_ships_in_manifest--;
-				break;
-			}
-		}
-	}
-
-};
-
-Ship_Contiguous_List ship_manifest;
+Hive_Ship_Array_Manifest ship_manifest;
 
 void init_scene_graph()
 {
-	new_array.init_octohedron_array();
-	for (int i = 0; i < 10; i++) new_array.extrude_new_octo();
-	new_array.update_model_vertices();
-	new_array.load_buffer_return_specs();
+	Hive_Object_Array[0].Init_Hive_Object({0.75,0.75,0.0}, 0.02);
+	for (int i = 0; i < 50; i++) Hive_Object_Array[0].extrude_new_octo();
+	Hive_Object_Array[0].update_translation_matrix({ -20.0,0.0,0.1 });
+	Hive_Object_Array[0].update_model_vertices();
+	Hive_Object_Array[0].load_buffer_return_specs();
+	Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0].hive_ship_array);
 
-	new_array_2.init_octohedron_array();
-	for (int i = 0; i < 10; i++) new_array_2.extrude_new_octo();
-	new_array_2.update_translation_matrix({ 20.0,0.0,0.0 });
-	new_array_2.update_model_vertices();
-	new_array_2.load_buffer_return_specs();
+	Hive_Object_Array[1].Init_Hive_Object({ 0.75,0.0,0.0 },0.005);
+	for (int i = 0; i < 50; i++) Hive_Object_Array[1].extrude_new_octo();
+	Hive_Object_Array[1].update_translation_matrix({ 20.0,0.0,0.1 });
+	Hive_Object_Array[1].update_model_vertices();
+	Hive_Object_Array[1].load_buffer_return_specs();
+	Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[1].hive_ship_array);
+
+	ship_instance_specs = load_instance_buffers(MAX_SHIPS_PER_HIVE);
 }
 
 void cleanup_scene_graph()
 {
-	Cleanup_Object(&new_array.loaded_specs);
+	for (int i = 0; i < num_hive_objects; i++)
+	{
+		Cleanup_Object(&Hive_Object_Array[i].loaded_specs);
+	}
 }
 
 void update_scene_graph()
 {
-	for (int i = 0; i < new_array.num_current_cells; i++)
+	for (int i = 0; i < ship_manifest.Array_End(); i++)
 	{
-		new_array.cell_array[i].octo_ship.move();
-	}
+		check_for_swarm_engagement_target(ship_manifest.Return_Ship_Array(i));
 
-	for (int i = 0; i < new_array_2.num_current_cells; i++)
-	{
-		new_array_2.cell_array[i].octo_ship.move();
+		for (int p = 0; p < ship_manifest.Return_Ship_Array(i)->array_end(); p++)
+		{
+			Ship_Object* ship = ship_manifest.Return_Ship_Array(i)->return_ship_in_array(p);
+
+			if (ship != NULL)
+			{
+				check_ship_engagement_target(ship, ship_manifest.Return_Ship_Array(i)->return_engaged_ship_array());
+
+				process_ship_damage(ship);
+
+				ship->move();
+
+				if (ship->get_health() <= 0.0) ship_manifest.Return_Ship_Array(i)->remove_ship_from_array(ship);
+			}
+		}
+
 	}
 }
 
-void draw_scene_graph(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos)
+void check_if_swarm_is_dead(Hive_Ship_Array* ship_array)
 {
-	Draw_Object(window, shader_program, new_array.loaded_specs, lightPos, new_array.ScaleMatrix, new_array.TranslationMatrix, new_array.RotationMatrix, {0.75,0.75,0.0});
 
-	for (int i = 0; i < new_array.num_current_cells; i++)
+}
+
+void check_for_swarm_engagement_target(Hive_Ship_Array* ship_array)
+{
+	if (ship_array->is_engaged() == false)
 	{
-		Draw_Object(window, shader_program, new_array.loaded_ship_specs, lightPos, new_array.cell_array[i].octo_ship.ScaleMatrix, new_array.cell_array[i].octo_ship.Transform_Matrix, new_array.cell_array[i].octo_ship.RotationMatrix, { 0.75,0.75,0.0 });
-		new_array.cell_array[i].octo_ship.move();
+		for (int i = 0; i < ship_manifest.Array_End(); i++)
+		{
+			if (ship_manifest.Return_Ship_Array(i)->return_uniq_id() != ship_array->return_uniq_id())
+			{
+				ship_array->set_engagement_target(ship_manifest.Return_Ship_Array(i));
+				ship_array->set_engaged(true);
+				if (ship_manifest.Return_Ship_Array(i)->is_engaged() == false) ship_manifest.Return_Ship_Array(i)->set_engagement_target(ship_array);
+				break;
+			}
+		}
 	}
+}
 
-	Draw_Object(window, shader_program, new_array_2.loaded_specs, lightPos, new_array_2.ScaleMatrix, new_array_2.TranslationMatrix, new_array_2.RotationMatrix, { 0.75,0.0,0.0 });
-
-	for (int i = 0; i < new_array_2.num_current_cells; i++)
+void check_ship_engagement_target(Ship_Object* ship, Hive_Ship_Array* swarm_two)
+{
+	if (ship->is_engaged() == false)
 	{
-		Draw_Object(window, shader_program, new_array.loaded_ship_specs, lightPos, new_array_2.cell_array[i].octo_ship.ScaleMatrix, new_array_2.cell_array[i].octo_ship.Transform_Matrix, new_array_2.cell_array[i].octo_ship.RotationMatrix, { 0.75,0.0,0.0 });
-		new_array_2.cell_array[i].octo_ship.move();
+		Ship_Object* target = swarm_two->return_ship_in_array(rand() % swarm_two->array_end());
+		if (target != NULL)
+		{
+			ship->set_engagement_target(target);
+			if (target->is_engaged() == false)
+			{
+				target->set_engagement_target(ship);
+			}
+		}
+
 	}
+	else if (ship->return_current_engagement_target() == NULL || ship->return_current_engagement_target()->get_health() <= 0.0)
+	{
+		ship->remove_engagement_target();
+		ship->set_engaged(false);
+		ship->set_new_orbit(ship->return_home_orbit());
+	}
+}
+
+void process_ship_damage(Ship_Object* ship)
+{
+	ship->double_check_engaged_ships();
+
+	ship->calculate_damage_from_engaging_ships();
+
+	ship->Reduce_Ship_Health(ship->calculate_damage_from_engaging_ships());
+}
+
+void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader, glm::vec3 lightPos)
+{
+	for (int i = 0; i < num_hive_objects; i++)
+	{
+		Draw_Object(window, shader_program, Hive_Object_Array[i].loaded_specs, lightPos, Hive_Object_Array[i].ScaleMatrix, Hive_Object_Array[i].TranslationMatrix, Hive_Object_Array[i].RotationMatrix, Hive_Object_Array[i].return_hive_color());
+	}
+	for (int i = 0; i < ship_manifest.Array_End(); i++)
+	{
+		Draw_Hive_Ship_Array(window, instance_render_shader, lightPos, ship_manifest.Return_Ship_Array(i));
+	}
+}
+
+void Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer)
+{
+	model_buffer_specs* ship_model_type = Return_Ship_Model_Buffer_Specs(ship_array_pointer->return_ship_model_type());
+	vec3 ship_array_color = ship_array_pointer->return_ship_array_color();
+
+	//for (int i = ship_array_pointer->array_begin(); i < ship_array_pointer->array_end(); i++)
+	//{
+	//	Ship_Object* ship = ship_array_pointer->return_ship_in_array(i);
+	//	if (ship != NULL && ship->is_active() == true)
+	//	{
+	//		Draw_Object(window, shader_program, *ship_model_type, lightPos, ship->ScaleMatrix, ship->Transform_Matrix, ship->RotationMatrix, ship_array_color);
+	//	}
+	//}
+
+	vec3* ship_transforms = ship_array_pointer->return_ships_transforms();
+	vec3* ship_rotations = ship_array_pointer->return_ships_rotations();
+
+	Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_instance_specs, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_transforms, ship_rotations);
 }
 
 void Handle_Mouse_Click(double x_pos, double y_pos)
 {
-	for (int i = 0; i < new_array.num_current_cells; i++)
+	for (int i = 0; i < Hive_Object_Array[0].num_current_cells; i++)
 	{
-		new_array.cell_array[i].octo_ship.set_new_orbit({x_pos, 0.0, y_pos});
+		Hive_Object_Array[0].cell_array[i].hive_ship_pointer->set_new_orbit({x_pos, 0.0, y_pos});
 	}
 }
 
-
-// Object Specific Functions
-
-void Add_Ship_To_Manifest(Ship_Object* new_ship)
+model_buffer_specs* Return_Ship_Model_Buffer_Specs(int ship_model)
 {
-	ship_manifest.add_ship_to_manifest(new_ship);
+	// Ultimately want to load the specs from some centralized model warehouse
+	return &Hive_Object_Array[0].loaded_ship_specs;
 }
 
-void Remove_Ship_From_Manifest(Ship_Object* ship_to_remove)
+
+// Object Specific Functions // 
+
+void Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array)
 {
-	ship_manifest.remove_ship_from_manifest(ship_to_remove);
+	ship_manifest.add_hive_ship_array_to_manifest(ship_array);
 }
+
+void Remove_Hive_Ship_Array_From_Manifest(Hive_Ship_Array* ship_array)
+{
+	ship_manifest.remove_hive_ship_array_from_manifest(ship_array);
+}
+

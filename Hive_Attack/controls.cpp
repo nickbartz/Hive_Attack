@@ -91,7 +91,6 @@ void computeMatricesFromInputs(GLFWwindow* window)
 		position -= direction * deltaTime * speed;
 	}
 
-
 	// Direction Vector
 	direction = glm::vec3(
 		cos(verticalAngle) * sin(horizontalAngle),
@@ -140,9 +139,4 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		Handle_Mouse_Click(new_point.x, new_point.z);
 	}
-}
-
-void scroll_button_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-
 }
