@@ -32,6 +32,8 @@ instanced_buffer_specs ship_instance_specs;
 
 Hive_Ship_Array_Manifest ship_manifest;
 
+glm::vec3 lightPos = glm::vec3(0, 10, 10);
+
 void init_scene_graph()
 {
 	Hive_Object_Array[0].Init_Hive_Object({0.75,0.75,0.0}, 0.02);
@@ -138,11 +140,11 @@ void process_ship_damage(Ship_Object* ship)
 	ship->Reduce_Ship_Health(ship->calculate_damage_from_engaging_ships());
 }
 
-void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader, glm::vec3 lightPos)
+void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader)
 {
 	for (int i = 0; i < num_hive_objects; i++)
 	{
-		Draw_Object(window, shader_program, Hive_Object_Array[i].loaded_specs, lightPos, Hive_Object_Array[i].ScaleMatrix, Hive_Object_Array[i].TranslationMatrix, Hive_Object_Array[i].RotationMatrix, Hive_Object_Array[i].return_hive_color());
+		Draw_Object(window, shader_program, Hive_Object_Array[i].loaded_specs, lightPos, Hive_Object_Array[i].return_model_matrix(), Hive_Object_Array[i].return_hive_color());
 	}
 	for (int i = 0; i < ship_manifest.Array_End(); i++)
 	{
@@ -155,19 +157,9 @@ void Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 l
 	model_buffer_specs* ship_model_type = Return_Ship_Model_Buffer_Specs(ship_array_pointer->return_ship_model_type());
 	vec3 ship_array_color = ship_array_pointer->return_ship_array_color();
 
-	//for (int i = ship_array_pointer->array_begin(); i < ship_array_pointer->array_end(); i++)
-	//{
-	//	Ship_Object* ship = ship_array_pointer->return_ship_in_array(i);
-	//	if (ship != NULL && ship->is_active() == true)
-	//	{
-	//		Draw_Object(window, shader_program, *ship_model_type, lightPos, ship->ScaleMatrix, ship->Transform_Matrix, ship->RotationMatrix, ship_array_color);
-	//	}
-	//}
+	mat4* ship_model_matrices = ship_array_pointer->return_ships_model_matrices();
 
-	vec3* ship_transforms = ship_array_pointer->return_ships_transforms();
-	vec3* ship_rotations = ship_array_pointer->return_ships_rotations();
-
-	Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_instance_specs, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_transforms, ship_rotations);
+	Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_instance_specs, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_model_matrices);
 }
 
 void Handle_Mouse_Click(double x_pos, double y_pos)

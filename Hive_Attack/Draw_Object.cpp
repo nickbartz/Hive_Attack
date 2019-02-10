@@ -30,6 +30,7 @@ GLuint ColorID;
 GLuint MatrixID_Instance;
 GLuint ViewMatrixID_Instance;
 GLuint ModelMatrixID_Instance;
+GLuint ProjectionMatrixID_Instance;
 GLuint TextureID_Instance;
 GLuint LightID_Instance;
 GLuint ColorID_Instance;
@@ -73,20 +74,18 @@ model_buffer_specs load_object_to_buffers(vector<glm::vec3> &indexed_vertices, v
 
 instanced_buffer_specs load_instance_buffers(int max_ships_in_swarm)
 {
-	GLuint ship_transforms_buffer;
-	glGenBuffers(1, &ship_transforms_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, ship_transforms_buffer);
-	glBufferData(GL_ARRAY_BUFFER, max_ships_in_swarm * sizeof(glm::vec3), NULL, GL_STREAM_DRAW);
-
-	GLuint ship_rotations_buffer;
-	glGenBuffers(1, &ship_rotations_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, ship_rotations_buffer);
-
-	glBufferData(GL_ARRAY_BUFFER, max_ships_in_swarm * sizeof(glm::vec3), NULL, GL_STREAM_DRAW);
+	GLuint ship_model_matrix_buffer;
+	glGenBuffers(1, &ship_model_matrix_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, ship_model_matrix_buffer);
+	for (unsigned int i = 0; i < 4; i++) {
+		glEnableVertexAttribArray(3 + i);
+		glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(mat4),(const GLvoid*)(sizeof(GLfloat) * i * 4));
+		glVertexAttribDivisor(3 + i, 1);
+	}
 
 	instanced_buffer_specs new_instance_specs;
-	new_instance_specs.ship_transform_buffer = ship_transforms_buffer;
-	new_instance_specs.ship_rotation_buffer = ship_rotations_buffer;
+
+	new_instance_specs.ship_model_matrix_buffer = ship_model_matrix_buffer;
 	new_instance_specs.max_objects_in_instance = max_ships_in_swarm;
 
 	return new_instance_specs;
@@ -94,8 +93,6 @@ instanced_buffer_specs load_instance_buffers(int max_ships_in_swarm)
 
 void assign_uniform_pointers(GLuint programID, GLuint instance_render_program)
 {
-	glUseProgram(programID);
-	
 	MatrixID = glGetUniformLocation(programID, "MVP");
 	ViewMatrixID = glGetUniformLocation(programID, "V");
 	ModelMatrixID = glGetUniformLocation(programID, "M");
@@ -103,25 +100,11 @@ void assign_uniform_pointers(GLuint programID, GLuint instance_render_program)
 	LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
 	ColorID = glGetUniformLocation(programID, "BaseColor");
 
-	glUseProgram(instance_render_program);
-
-	MatrixID_Instance = glGetUniformLocation(programID, "MVP");
-	ViewMatrixID_Instance = glGetUniformLocation(programID, "V");
-	ModelMatrixID_Instance = glGetUniformLocation(programID, "M");
-	TextureID_Instance = glGetUniformLocation(programID, "myTextureSampler");
-	LightID_Instance = glGetUniformLocation(programID, "LightPosition_worldspace");
-	ColorID_Instance = glGetUniformLocation(programID, "BaseColor");
-}
-
-void stream_instance_data_to_buffers(instanced_buffer_specs instance, int num_objects_to_render, vec3* swarm_transforms, vec3* swarm_rotations)
-{
-	glBindBuffer(GL_ARRAY_BUFFER, instance.ship_transform_buffer);
-	glBufferData(GL_ARRAY_BUFFER, instance.max_objects_in_instance * sizeof(glm::vec3), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, num_objects_to_render * sizeof(glm::vec3), swarm_transforms);
-
-	glBindBuffer(GL_ARRAY_BUFFER, instance.ship_rotation_buffer);
-	glBufferData(GL_ARRAY_BUFFER, instance.max_objects_in_instance * sizeof(glm::vec3), NULL, GL_STREAM_DRAW);  // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, num_objects_to_render * sizeof(glm::vec3), swarm_rotations);
+	ViewMatrixID_Instance = glGetUniformLocation(instance_render_program, "V");
+	ProjectionMatrixID_Instance = glGetUniformLocation(instance_render_program, "P");
+	TextureID_Instance = glGetUniformLocation(instance_render_program, "myTextureSampler");
+	LightID_Instance = glGetUniformLocation(instance_render_program, "LightPosition_worldspace");
+	ColorID_Instance = glGetUniformLocation(instance_render_program, "BaseColor");
 }
 
 void Enable_Model_Buffers(model_buffer_specs model_specs)
@@ -142,30 +125,11 @@ void Enable_Model_Buffers(model_buffer_specs model_specs)
 	glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,0,(void*)0);
 }
 
-void Enable_Instance_Buffers(instanced_buffer_specs instance_specs)
-{
-	// 4th Attribute Buffer: Positions
-	glEnableVertexAttribArray(3);
-	glBindBuffer(GL_ARRAY_BUFFER, instance_specs.ship_transform_buffer);
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-	// 5th Attribute Buffer: Rotations
-	glEnableVertexAttribArray(4);
-	glBindBuffer(GL_ARRAY_BUFFER, instance_specs.ship_rotation_buffer);
-	glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)0);
-}
-
 void Disable_Vertex_Attrib_Arrays()
 {
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
-}
-
-void Disable_Instance_Vertex_Attrib_Array()
-{
-	glDisableVertexAttribArray(3);
-	glDisableVertexAttribArray(4);
 }
 
 void Draw_Element_Array(model_buffer_specs model_specs)
@@ -174,7 +138,7 @@ void Draw_Element_Array(model_buffer_specs model_specs)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model_specs.elementbuffer);
 
 	// Draw the triangles !
-	glDrawElements(GL_TRIANGLES, model_specs.num_vertices_to_draw, GL_UNSIGNED_SHORT, (void*)0);
+	glDrawElements(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, (void*)0);
 }
 
 void Draw_Instance_Array(model_buffer_specs model_specs, int num_objects_to_draw)
@@ -185,17 +149,17 @@ void Draw_Instance_Array(model_buffer_specs model_specs, int num_objects_to_draw
 	glVertexAttribDivisor(3, 1);
 	glVertexAttribDivisor(4, 1);
 
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, model_specs.num_vertices_to_draw, num_objects_to_draw);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, model_specs.num_indices, num_objects_to_draw);
 }
 
-void Draw_Object(GLFWwindow* window, GLuint shader_program, model_buffer_specs model_specs, vec3 lightPos, mat4 scale_matrix, mat4 transform_matrix, mat4 rotation_matrix, vec3 Base_Color)
+void Draw_Object(GLFWwindow* window, GLuint shader_program, model_buffer_specs model_specs, vec3 lightPos, mat4 model_matrix, vec3 Base_Color)
 {
 	// Use our shader
 	glUseProgram(shader_program);
 
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
-	glm::mat4 ModelMatrix = transform_matrix * rotation_matrix * scale_matrix;
+	glm::mat4 ModelMatrix = model_matrix;
 	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
 	// Send our transformation to the currently bound shader, 
@@ -217,36 +181,34 @@ void Draw_Object(GLFWwindow* window, GLuint shader_program, model_buffer_specs m
 	Disable_Vertex_Attrib_Arrays();
 }
 
-void Draw_Instanced_Object(GLFWwindow* window, GLuint shader_program, vec3 lightPos, model_buffer_specs model_specs, instanced_buffer_specs instance_specs, int num_items_to_render, vec3 Base_Color, vec3* swarm_transforms, vec3* swarm_rotations)
+void Draw_Instanced_Object(GLFWwindow* window, GLuint shader_program, vec3 lightPos, model_buffer_specs model_specs, instanced_buffer_specs instance_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices)
 {
 	// Use our shader
 	glUseProgram(shader_program);
 
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
-	glm::mat4 ModelMatrix = glm::translate(mat4(), vec3(0.0f, 0.0f, 0.0f));
-	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
-	// Send our transformation to the currently bound shader, 
-	// in the "MVP" uniform
-	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-	glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
-	glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
+	glBindBuffer(GL_ARRAY_BUFFER, instance_specs.ship_model_matrix_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * num_items_to_render, swarm_model_matrices, GL_DYNAMIC_DRAW);
 
-	glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(ColorID, Base_Color.x, Base_Color.y, Base_Color.z);
+	glUniformMatrix4fv(ViewMatrixID_Instance, 1, GL_FALSE, &ViewMatrix[0][0]);
+	glUniformMatrix4fv(ProjectionMatrixID_Instance, 1, GL_FALSE, &ProjectionMatrix[0][0]);
+
+	glUniform3f(LightID_Instance, lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(ColorID_Instance, Base_Color.x, Base_Color.y, Base_Color.z);
 
 	// Set our "myTextureSampler" sampler to use Texture Unit 0
-	glUniform1i(TextureID, 0);
+	glUniform1i(TextureID_Instance, 0);
 
 	Enable_Model_Buffers(model_specs);
-	Enable_Instance_Buffers(instance_specs);
-	stream_instance_data_to_buffers(instance_specs, num_items_to_render, swarm_transforms, swarm_rotations);
-	
-	Draw_Instance_Array(model_specs, num_items_to_render);
+
+	// Index buffer
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model_specs.elementbuffer);
+
+	glDrawElementsInstanced(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, 0 , num_items_to_render);
 
 	Disable_Vertex_Attrib_Arrays();
-	Disable_Instance_Vertex_Attrib_Array();
 }
 
 void Cleanup_Object(model_buffer_specs* model_specs)

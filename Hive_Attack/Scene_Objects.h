@@ -213,6 +213,8 @@ public:
 
 	vec3 return_current_rotation_vector();
 
+	mat4 return_current_model_matrix();
+
 	vec3 return_home_orbit();
 
 	void rotate_directional_vector(float angle);
@@ -301,8 +303,8 @@ public:
 	void set_ship_array_damage(float damage);
 	float return_ship_array_damage();
 
-	vec3* return_ships_transforms();
-	vec3* return_ships_rotations();
+	mat4* return_ships_model_matrices();
+
 	int return_num_ships_in_swarm();
 
 private:
@@ -319,9 +321,7 @@ private:
 	vec3 ship_array_color = { 0.75,0.75,0.0 };
 	float ship_array_damage = 0.5;
 
-	vec3 ship_transforms[MAX_SHIPS_PER_HIVE];
-	vec3 ship_rotations[MAX_SHIPS_PER_HIVE];
-
+	mat4 ship_model_matrices[MAX_SHIPS_PER_HIVE];
 };
 
 class Hive_Pod_Object
@@ -466,6 +466,8 @@ public:
 	void load_buffer_return_specs();
 
 	vec3 return_hive_color();
+
+	mat4 return_model_matrix();
 
 private:
 };

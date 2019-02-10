@@ -110,6 +110,11 @@ vec3 Ship_Object::return_current_rotation_vector()
 	return current_rotation_vector;
 }
 
+mat4 Ship_Object::return_current_model_matrix()
+{
+	return Transform_Matrix*RotationMatrix*ScaleMatrix;
+}
+
 vec3 Ship_Object::return_home_orbit()
 {
 	return home_orbit_location;
@@ -271,7 +276,8 @@ void Ship_Object::move()
 		vec3 origin_direction = orbit_location - current_transform_vector;
 		origin_direction *= distance / orbit_distance * 0.0001;
 
-		increment_transform_matrix(origin_direction);
+		// Move the ship back towards its stable orbit if it's moving further away 
+		current_direction_vector += origin_direction;
 	}
 	else if (distance > orbit_distance*1.5)
 	{
@@ -520,7 +526,7 @@ float Hive_Ship_Array::return_ship_array_damage()
 	return ship_array_damage;
 }
 
-vec3* Hive_Ship_Array::return_ships_transforms()
+mat4* Hive_Ship_Array::return_ships_model_matrices()
 {
 	int ship_index = 0;
 
@@ -529,24 +535,12 @@ vec3* Hive_Ship_Array::return_ships_transforms()
 		Ship_Object* new_ship = return_ship_in_array(i);
 		if (new_ship != NULL && new_ship->is_active())
 		{
-			ship_transforms[ship_index] = new_ship->return_current_transform_vector();
+			ship_model_matrices[ship_index] = new_ship->return_current_model_matrix();
 			ship_index++;
 		}
 	}
 
-	return ship_transforms;
-}
-
-vec3* Hive_Ship_Array::return_ships_rotations()
-{
-	int ship_index = 0;
-
-	for (int i = 0; i < max_list_pointer; i++)
-	{
-		Ship_Object* new_ship = return_ship_in_array(i);
-		if (new_ship != NULL && new_ship->is_active()) ship_rotations[ship_index] = new_ship->return_current_rotation_vector();
-	}
-	return ship_rotations;
+	return ship_model_matrices;
 }
 
 int Hive_Ship_Array::return_num_ships_in_swarm()
@@ -912,4 +906,9 @@ void Hive_Object::load_buffer_return_specs()
 vec3 Hive_Object::return_hive_color()
 {
 	return Hive_Color;
+}
+
+mat4 Hive_Object::return_model_matrix()
+{
+	return TranslationMatrix*RotationMatrix*ScaleMatrix;
 }

@@ -13,7 +13,6 @@
 #include <glm/gtx/transform.hpp>
 #include <Global_Render_Variables.h>
 #include<Draw_Object.h>
-//#include<Scene_Objects.h>
 
 #include<iostream>
 
@@ -65,7 +64,7 @@ void update_scene_graph();
 
 void process_ship_damage(Ship_Object * ship_array);
 
-void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader, glm::vec3 lightPos);
+void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader);
 
 void Handle_Mouse_Click(double x_pos, double y_pos);
 

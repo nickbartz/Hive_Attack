@@ -30,6 +30,8 @@
 using namespace std;
 using namespace glm;
 
+
+
 int main()
 {
 	if (!glfwInit())
@@ -85,9 +87,6 @@ int main()
 	GLuint Instance_Render_Shader = LoadShaders("Instance_Render.vertexshader", "Instance_Render.fragmentshader");
 
 	init_scene_graph();
-	
-	// Get a handle for our "LightPosition" uniform
-	glm::vec3 lightPos = glm::vec3(0, 10, 10);
 
 	// For speed computation
 	double lastTime = glfwGetTime();
@@ -125,7 +124,7 @@ int main()
 		// Draw
 		computeMatricesFromInputs(window);
 		assign_uniform_pointers(programID, Instance_Render_Shader);
-		draw_scene_graph(window, programID, Instance_Render_Shader, lightPos);
+		draw_scene_graph(window, programID, Instance_Render_Shader);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -136,6 +135,7 @@ int main()
 		glfwWindowShouldClose(window) == 0);
 
 	cleanup_scene_graph();
+
 	glDeleteProgram(programID);
 	glDeleteProgram(Instance_Render_Shader);
 
