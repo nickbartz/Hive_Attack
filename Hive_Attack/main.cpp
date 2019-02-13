@@ -30,7 +30,7 @@
 using namespace std;
 using namespace glm;
 
-
+Gameplay_Manager gameplay_manager;
 
 int main()
 {
@@ -86,7 +86,7 @@ int main()
 	GLuint programID = LoadShaders("StandardShading.vertexshader", "StandardTransparentShading.fragmentshader");
 	GLuint Instance_Render_Shader = LoadShaders("Instance_Render.vertexshader", "Instance_Render.fragmentshader");
 
-	init_scene_graph();
+	gameplay_manager.init_scene_graph();
 
 	// For speed computation
 	double lastTime = glfwGetTime();
@@ -119,12 +119,12 @@ int main()
 		glfwSetMouseButtonCallback(window, mouse_button_callback);
 
 		// Update
-		update_scene_graph();
+		gameplay_manager.update_scene_graph();
 
 		// Draw
 		computeMatricesFromInputs(window);
 		assign_uniform_pointers(programID, Instance_Render_Shader);
-		draw_scene_graph(window, programID, Instance_Render_Shader);
+		gameplay_manager.draw_scene_graph(window, programID, Instance_Render_Shader);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -134,7 +134,7 @@ int main()
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
 		glfwWindowShouldClose(window) == 0);
 
-	cleanup_scene_graph();
+	gameplay_manager.cleanup_scene_graph();
 
 	glDeleteProgram(programID);
 	glDeleteProgram(Instance_Render_Shader);

@@ -12,38 +12,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <Global_Render_Variables.h>
+
 #include<Draw_Object.h>
+#include<Scene_Objects.h>
 
 #include<iostream>
-
-class Hive_Ship_Array;
-class Ship_Object;
-
-const int MAX_SHIPS_PER_HIVE = 1000;
-
-struct Grid_Coord
-{
-	int grid_x = 0, grid_y = 0, grid_z = 0;
-
-	void print()
-	{
-		std::cout << grid_x << ":" << grid_y << ":" << grid_z;
-	}
-
-};
-
-inline bool operator<(const Grid_Coord& p1, const Grid_Coord& p2) {
-	if (p1.grid_x != p2.grid_x) {
-		return p1.grid_x < p2.grid_x;
-	}
-	else if (p1.grid_y != p2.grid_y) {
-		return p1.grid_y < p2.grid_y;
-	}
-	else
-	{
-		return p1.grid_z < p2.grid_z;
-	}
-}
 
 inline Grid_Coord operator+(const Grid_Coord& p1, const Grid_Coord& p2)
 {
@@ -56,24 +29,41 @@ inline Grid_Coord operator+(const Grid_Coord& p1, const Grid_Coord& p2)
 	return new_coord;
 }
 
-void init_scene_graph();
+class Gameplay_Manager
+{
+public:
+	Gameplay_Manager();
 
-void cleanup_scene_graph();
+	void init_scene_graph();
 
-void update_scene_graph();
+	void update_scene_graph();
 
-void process_ship_damage(Ship_Object * ship_array);
+	void cleanup_scene_graph();
 
-void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader);
+	void draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader);
 
-void Handle_Mouse_Click(double x_pos, double y_pos);
+	void Draw_Hive(GLFWwindow * window, GLuint shader_program, glm::vec3 lightPos, Hive_Object * hive_pointer);
 
-model_buffer_specs* Return_Ship_Model_Buffer_Specs(int ship_model);
+	void Handle_Mouse_Click(double x_pos, double y_pos);
 
-void Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array);
+	model_buffer_specs * Return_Hive_Pod_Model_Buffer_Specs(int hive_pod_model);
 
-void Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer);
+	void Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array);
 
-void check_for_swarm_engagement_target(Hive_Ship_Array * ship_array);
+	void Remove_Hive_Ship_Array_From_Manifest(Hive_Ship_Array * ship_array);
 
-void check_ship_engagement_target(Ship_Object * ship, Hive_Ship_Array * swarm_two);
+	void Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer);
+
+	bool Set_Hive_Engagement_Target(Hive_Object * base_hive, Hive_Object* hive_engagement_target);
+
+private:
+	vector<Hive_Object*> Hive_Object_Array;
+
+	Hive_Ship_Array_Manifest hive_ship_array_manifest;
+
+	glm::vec3 lightPos = glm::vec3(0, 10, 10);
+
+};
+
+
+

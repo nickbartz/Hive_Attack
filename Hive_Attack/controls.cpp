@@ -137,6 +137,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		cout << new_point.x << ", " << new_point.y << ", " << new_point.z << endl;
 
-		Handle_Mouse_Click(new_point.x, new_point.z);
+		//Handle_Mouse_Click(new_point.x, new_point.z);
 	}
 }

@@ -28,6 +28,7 @@
     <ClCompile Include="Scene_Graph.cpp" />
     <ClCompile Include="Scene_Objects.cpp" />
     <ClCompile Include="Service_Locator.cpp" />
+    <ClCompile Include="Ship_Array.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="vboindexer.cpp" />
   </ItemGroup>
@@ -41,6 +42,7 @@
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="Scene_Graph.h" />
     <ClInclude Include="Service_Locator.h" />
+    <ClInclude Include="Ship_Array.h" />
     <ClInclude Include="texture.hpp" />
     <ClInclude Include="vboindexer.hpp" />
   </ItemGroup>

@@ -37,7 +37,7 @@ GLuint ColorID_Instance;
 
 GLuint Texture;
 
-model_buffer_specs load_object_to_buffers(vector<glm::vec3> &indexed_vertices, vector<glm::vec2> indexed_uvs, vector<glm::vec3> indexed_normals, vector<unsigned short> indices)
+model_buffer_specs create_object_buffers(vector<glm::vec3> &indexed_vertices, vector<glm::vec2> indexed_uvs, vector<glm::vec3> indexed_normals, vector<unsigned short> indices)
 {
 	GLuint VertexArrayID;
 	glGenVertexArrays(1, &VertexArrayID);
@@ -47,48 +47,53 @@ model_buffer_specs load_object_to_buffers(vector<glm::vec3> &indexed_vertices, v
 	glGenBuffers(1, &vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3), &indexed_vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	GLuint uvbuffer;
 	glGenBuffers(1, &uvbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, indexed_uvs.size() * sizeof(glm::vec2), &indexed_uvs[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	GLuint normalbuffer;
 	glGenBuffers(1, &normalbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
 	glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(glm::vec3), &indexed_normals[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	// Generate a buffer for the indices as well
+	// Generates a Model_Matrix_Buffer for Instancing
+	GLuint model_matrix_instance_buffer;
+	glGenBuffers(1, &model_matrix_instance_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, model_matrix_instance_buffer);
+	for (unsigned int i = 0; i < 4; i++) {
+		glEnableVertexAttribArray(3 + i);
+		glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(mat4), (const GLvoid*)(sizeof(GLfloat) * i * 4));
+		glVertexAttribDivisor(3 + i, 1);
+	}
+
 	GLuint elementbuffer;
 	glGenBuffers(1, &elementbuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+
+
 
 	// Bind our texture in Texture Unit 0
 	Texture = loadBMP_custom("Cell_Texture.bmp");
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, Texture);
 
-	return { VertexArrayID, vertexbuffer, uvbuffer, normalbuffer, elementbuffer, indices.size() };
-}
+	model_buffer_specs new_model;
 
-instanced_buffer_specs load_instance_buffers(int max_ships_in_swarm)
-{
-	GLuint ship_model_matrix_buffer;
-	glGenBuffers(1, &ship_model_matrix_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, ship_model_matrix_buffer);
-	for (unsigned int i = 0; i < 4; i++) {
-		glEnableVertexAttribArray(3 + i);
-		glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(mat4),(const GLvoid*)(sizeof(GLfloat) * i * 4));
-		glVertexAttribDivisor(3 + i, 1);
-	}
+	new_model.VertexArrayID = VertexArrayID;
+	new_model.vertexbuffer = vertexbuffer;
+	new_model.uvbuffer = uvbuffer;
+	new_model.normalbuffer = normalbuffer;
+	new_model.elementbuffer = elementbuffer;
+	new_model.num_indices = indices.size();
+	new_model.model_matrix_instance_buffer = model_matrix_instance_buffer;
 
-	instanced_buffer_specs new_instance_specs;
-
-	new_instance_specs.ship_model_matrix_buffer = ship_model_matrix_buffer;
-	new_instance_specs.max_objects_in_instance = max_ships_in_swarm;
-
-	return new_instance_specs;
+	return new_model;
 }
 
 void assign_uniform_pointers(GLuint programID, GLuint instance_render_program)
@@ -107,55 +112,12 @@ void assign_uniform_pointers(GLuint programID, GLuint instance_render_program)
 	ColorID_Instance = glGetUniformLocation(instance_render_program, "BaseColor");
 }
 
-void Enable_Model_Buffers(model_buffer_specs model_specs)
-{
-	// 1rst attribute buffer : vertices
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, model_specs.vertexbuffer);
-	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
-
-	// 2nd attribute buffer : UVs
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, model_specs.uvbuffer);
-	glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,0,(void*)0);
-
-	// 3rd attribute buffer : normals
-	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, model_specs.normalbuffer);
-	glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,0,(void*)0);
-}
-
-void Disable_Vertex_Attrib_Arrays()
-{
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-}
-
-void Draw_Element_Array(model_buffer_specs model_specs)
-{
-	// Index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model_specs.elementbuffer);
-
-	// Draw the triangles !
-	glDrawElements(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, (void*)0);
-}
-
-void Draw_Instance_Array(model_buffer_specs model_specs, int num_objects_to_draw)
-{
-	glVertexAttribDivisor(0, 0); // particles vertices 
-	glVertexAttribDivisor(1, 0); // particles uvs 
-	glVertexAttribDivisor(2, 0); // particles normals
-	glVertexAttribDivisor(3, 1);
-	glVertexAttribDivisor(4, 1);
-
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, model_specs.num_indices, num_objects_to_draw);
-}
-
 void Draw_Object(GLFWwindow* window, GLuint shader_program, model_buffer_specs model_specs, vec3 lightPos, mat4 model_matrix, vec3 Base_Color)
 {
 	// Use our shader
 	glUseProgram(shader_program);
+
+	glBindVertexArray(model_specs.VertexArrayID);
 
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
@@ -174,22 +136,28 @@ void Draw_Object(GLFWwindow* window, GLuint shader_program, model_buffer_specs m
 	// Set our "myTextureSampler" sampler to use Texture Unit 0
 	glUniform1i(TextureID, 0);
 
-	Enable_Model_Buffers(model_specs);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
 
-	Draw_Element_Array(model_specs);
+	glDrawElements(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, (void*)0);
 
-	Disable_Vertex_Attrib_Arrays();
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
 }
 
-void Draw_Instanced_Object(GLFWwindow* window, GLuint shader_program, vec3 lightPos, model_buffer_specs model_specs, instanced_buffer_specs instance_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices)
+void Draw_Instanced_Object(GLFWwindow* window, GLuint shader_program, vec3 lightPos, model_buffer_specs model_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices)
 {
 	// Use our shader
 	glUseProgram(shader_program);
 
+	glBindVertexArray(model_specs.VertexArrayID);
+
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
 
-	glBindBuffer(GL_ARRAY_BUFFER, instance_specs.ship_model_matrix_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, model_specs.model_matrix_instance_buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * num_items_to_render, swarm_model_matrices, GL_DYNAMIC_DRAW);
 
 	glUniformMatrix4fv(ViewMatrixID_Instance, 1, GL_FALSE, &ViewMatrix[0][0]);
@@ -201,14 +169,23 @@ void Draw_Instanced_Object(GLFWwindow* window, GLuint shader_program, vec3 light
 	// Set our "myTextureSampler" sampler to use Texture Unit 0
 	glUniform1i(TextureID_Instance, 0);
 
-	Enable_Model_Buffers(model_specs);
-
-	// Index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model_specs.elementbuffer);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
+	glEnableVertexAttribArray(5);
+	glEnableVertexAttribArray(6);
 
 	glDrawElementsInstanced(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, 0 , num_items_to_render);
-
-	Disable_Vertex_Attrib_Arrays();
+	
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	glDisableVertexAttribArray(3);
+	glDisableVertexAttribArray(4);
+	glDisableVertexAttribArray(5);
+	glDisableVertexAttribArray(6);
 }
 
 void Cleanup_Object(model_buffer_specs* model_specs)
