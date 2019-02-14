@@ -12,8 +12,7 @@
 
 using namespace std;
 
-
-float speed = 24.0f; // 3 units / second
+float speed = 40.0f; // 3 units / second
 float mouseSpeed = 0.0005f;
 
 // Matrices
@@ -33,6 +32,8 @@ float verticalAngle = -0.6f;
 
 double currentTime;
 float deltaTime;
+
+Gameplay_Manager* gameplay_manager;
 
 glm::mat4 getProjectionMatrix()
 {
@@ -109,6 +110,11 @@ void computeMatricesFromInputs(GLFWwindow* window)
 	lastTime = currentTime;
 }
 
+void set_gameplay_manager_temp_func(Gameplay_Manager* gameplay)
+{
+	gameplay_manager = gameplay;
+}
+
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -137,6 +143,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 		cout << new_point.x << ", " << new_point.y << ", " << new_point.z << endl;
 
-		//Handle_Mouse_Click(new_point.x, new_point.z);
+		gameplay_manager->Handle_Mouse_Click(new_point.x, new_point.z);
 	}
 }

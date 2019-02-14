@@ -46,6 +46,8 @@ public:
 
 	void Handle_Mouse_Click(double x_pos, double y_pos);
 
+	loaded_model_buffer load_base_octo();
+
 	model_buffer_specs * Return_Hive_Pod_Model_Buffer_Specs(int hive_pod_model);
 
 	void Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array);
@@ -62,6 +64,9 @@ private:
 	Hive_Ship_Array_Manifest hive_ship_array_manifest;
 
 	glm::vec3 lightPos = glm::vec3(0, 10, 10);
+
+	loaded_model_buffer hive_pod;
+	loaded_model_buffer simple_ship;
 
 };
 

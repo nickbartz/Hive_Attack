@@ -29,21 +29,55 @@
 using namespace std;
 using namespace glm;
 
-// HIVE POD //
 
-void Hive_Pod_Object::Init_Hive_Pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
+void Octohedron_Model::init_base_octohedron()
 {
-	octohedron_coordinates = base_grid_coords + face_grid_offset;
+	octo_vertices["v1234"] = { d, 0, 0 }; ;
+	octo_vertices["v1243"] = { 4 / d,	2 / d,	1 };
+	octo_vertices["v1324"] = { 4 / d, -3 / d,	0 };
+	octo_vertices["v1342"] = { 2 / d,	1 / d,	2 };
+	octo_vertices["v1423"] = { 2 / d, -4 / d, 1 };
+	octo_vertices["v1432"] = { 1 / d, -2 / d, 2 };
 
-	update_translation(local_translation, world_translation);
+	octo_vertices["v2134"] = { 4 / d, 2 / d, -1 };
+	octo_vertices["v2143"] = { 3 / d, 4 / d, 0 };
+	octo_vertices["v2314"] = { 2 / d,-4 / d,-1 };
+	octo_vertices["v2341"] = { -1 / d,2 / d,2 };
+	octo_vertices["v2431"] = { -2 / d,-1 / d,2 };
+	octo_vertices["v2413"] = { 0,-d,0 };
 
-	init_squares(local_translation);
-	init_hexagons(local_translation);
+	octo_vertices["v3142"] = -octo_vertices["v2413"];
+	octo_vertices["v3124"] = -octo_vertices["v2431"];
+	octo_vertices["v3241"] = -octo_vertices["v2314"];
+	octo_vertices["v3214"] = -octo_vertices["v2341"];
+	octo_vertices["v3412"] = -octo_vertices["v2143"];
+	octo_vertices["v3421"] = -octo_vertices["v2134"];
 
-	pod_is_active = true;
+	octo_vertices["v4123"] = -octo_vertices["v1432"];
+	octo_vertices["v4132"] = -octo_vertices["v1423"];
+	octo_vertices["v4231"] = -octo_vertices["v1324"];
+	octo_vertices["v4213"] = -octo_vertices["v1342"];
+	octo_vertices["v4312"] = -octo_vertices["v1243"];
+	octo_vertices["v4321"] = -octo_vertices["v1234"];
+
+	map<string, vec3>::iterator it;
+
+	glm::quat MyQuaternion;
+	glm::vec3 EulerAngles({ 0.0f,0.0f,1.1f });
+	MyQuaternion = glm::quat(EulerAngles);
+
+	for (it = octo_vertices.begin(); it != octo_vertices.end(); it++)
+	{
+		it->second *= 0.5;
+		it->second = rotate(MyQuaternion, it->second);
+	}
+
+	init_squares({ 0.0f,0.0f,0.0f });
+	init_hexagons({ 0.0f,0.0f,0.0f });
+
 }
 
-void Hive_Pod_Object::init_squares(vec3 translation_vector)
+void Octohedron_Model::init_squares(vec3 translation_vector)
 {
 	Square new_square;
 	new_square.init_square(octo_vertices["v1324"], octo_vertices["v2314"], octo_vertices["v2413"], octo_vertices["v1423"], translation_vector); // A+ (grid x + 2)
@@ -83,7 +117,7 @@ void Hive_Pod_Object::init_squares(vec3 translation_vector)
 	square_array[5] = (new_square);
 }
 
-void Hive_Pod_Object::init_hexagons(vec3 translation_vector)
+void Octohedron_Model::init_hexagons(vec3 translation_vector)
 {
 	Hexagon new_hexagon;
 	new_hexagon.init_hexagon(octo_vertices["v2314"], octo_vertices["v3214"], octo_vertices["v4213"], octo_vertices["v4312"], octo_vertices["v3412"], octo_vertices["v2413"], translation_vector); // C ( x + 1, z + 1, y + 1)
@@ -92,7 +126,7 @@ void Hive_Pod_Object::init_hexagons(vec3 translation_vector)
 	new_hexagon.face_grid_offset = { 1,1,1 };
 	hexagon_array[0] = (new_hexagon);
 
-	new_hexagon.init_hexagon(octo_vertices["v4213"], octo_vertices["v4123"], octo_vertices["v4132"], octo_vertices["v4231"], octo_vertices["v4321"],octo_vertices["v4312"], translation_vector); // D ( x - 1, z + 1, y + 1)
+	new_hexagon.init_hexagon(octo_vertices["v4213"], octo_vertices["v4123"], octo_vertices["v4132"], octo_vertices["v4231"], octo_vertices["v4321"], octo_vertices["v4312"], translation_vector); // D ( x - 1, z + 1, y + 1)
 	new_hexagon.set_tessalation_vector(octo_vertices["v4213"] - octo_vertices["v1324"]);
 	new_hexagon.opposite_hexagon = 5;
 	new_hexagon.face_grid_offset = { -1,1,1 };
@@ -116,7 +150,7 @@ void Hive_Pod_Object::init_hexagons(vec3 translation_vector)
 	new_hexagon.face_grid_offset = { 1,1,-1 };
 	hexagon_array[4] = (new_hexagon);
 
-	new_hexagon.init_hexagon(octo_vertices["v1243"],octo_vertices["v1234"], octo_vertices["v1324"], octo_vertices["v1423"], octo_vertices["v1432"], octo_vertices["v1342"], translation_vector); // D ( x + 1, z - 1, y - 1)
+	new_hexagon.init_hexagon(octo_vertices["v1243"], octo_vertices["v1234"], octo_vertices["v1324"], octo_vertices["v1423"], octo_vertices["v1432"], octo_vertices["v1342"], translation_vector); // D ( x + 1, z - 1, y - 1)
 	new_hexagon.set_tessalation_vector(octo_vertices["v1243"] - octo_vertices["v4132"]);
 	new_hexagon.opposite_hexagon = 1;
 	new_hexagon.face_grid_offset = { 1,-1,-1 };
@@ -135,22 +169,12 @@ void Hive_Pod_Object::init_hexagons(vec3 translation_vector)
 	hexagon_array[7] = (new_hexagon);
 }
 
-vec3 Hive_Pod_Object::return_local_translation_vector()
+vec3 Octohedron_Model::return_octo_vertex_vector(string vertex)
 {
-	return local_translation_vector;
+	return octo_vertices[vertex];
 }
 
-vec3 Hive_Pod_Object::return_world_translation_vector()
-{
-	return world_translation_vector;
-}
-
-vec3 Hive_Pod_Object::return_scaled_translation_vector()
-{
-	return { local_translation_vector.x*scale_vector.x, local_translation_vector.y*scale_vector.y, local_translation_vector.z*scale_vector.z };
-}
-
-void Hive_Pod_Object::add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals)
+void Octohedron_Model::add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals)
 {
 	for (int i = 0; i < 6; i++)
 	{
@@ -169,7 +193,7 @@ void Hive_Pod_Object::add_triangle_array_components(vector<glm::vec3> &vertices,
 	}
 }
 
-void Hive_Pod_Object::check_for_total_obscurity()
+bool Octohedron_Model::check_for_total_obscurity()
 {
 	all_squares_obscured = true;
 	// Conscious decision to limit square extrustion to the 4 squares on the sides (0-3), not the north and south facing squares
@@ -183,6 +207,41 @@ void Hive_Pod_Object::check_for_total_obscurity()
 	{
 		if (hexagon_array[i].obscured == false) all_hexagons_obscured = false;
 	}
+
+	return all_squares_obscured;
+}
+
+
+
+// HIVE POD //
+
+void Hive_Pod_Object::Init_Hive_Pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
+{
+	octohedron_coordinates = base_grid_coords + face_grid_offset;
+
+	update_translation(local_translation, world_translation);
+
+	pod_is_active = true;
+}
+
+vec3 Hive_Pod_Object::return_local_translation_vector()
+{
+	return local_translation_vector;
+}
+
+vec3 Hive_Pod_Object::return_world_translation_vector()
+{
+	return world_translation_vector;
+}
+
+vec3 Hive_Pod_Object::return_scaled_translation_vector()
+{
+	return { local_translation_vector.x*scale_vector.x, local_translation_vector.y*scale_vector.y, local_translation_vector.z*scale_vector.z };
+}
+
+Octohedron_Model * Hive_Pod_Object::return_octohedron_base()
+{
+	return base_octohedron;
 }
 
 void Hive_Pod_Object::update_translation(vec3 _local_translation_vector, vec3 _world_translation_vector)
@@ -250,6 +309,8 @@ Hive_Object::Hive_Object()
 
 void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, float hive_damage)
 {
+	cout << "Creating New Hive Object" << endl;
+
 	glm::quat MyQuaternion;
 	glm::vec3 EulerAngles({ 0.0f,0.0f,0.0f });
 	MyQuaternion = glm::quat(EulerAngles);
@@ -274,6 +335,8 @@ bool Hive_Object::check_engagement_target_fleet_destroyed()
 
 void Hive_Object::extrude_new_octo()
 {
+	cout << "Extruding Hive Pod" << endl;
+
 	int array_index = 0;
 	bool square_found = false;
 	int face_num = 0;
@@ -282,17 +345,23 @@ void Hive_Object::extrude_new_octo()
 
 	// Try to find a cell where not all squares are obscured
 	array_index = rand() % num_current_hive_pods;
+
 	for (int i = 0; i < num_current_hive_pods; i++)
 	{
-		if (Hive_Pod_Array[array_index].all_squares_obscured == false)
+		Octohedron_Model* base_octohedron = Hive_Pod_Array[array_index].return_octohedron_base();
+
+		if (base_octohedron->check_for_total_obscurity() == false)
 		{
-			extrude_from_square(array_index);
+			/*if (rand() % 2 == 0) extrude_from_square(array_index);
+			else 
+			*/extrude_from_hexagon(array_index);
 			return;
 		}
+
+
 		array_index++;
 		if (array_index > num_current_hive_pods - 1) array_index = 0;
 	}
-
 }
 
 void Hive_Object::extrude_from_square(int array_index)
@@ -302,12 +371,14 @@ void Hive_Object::extrude_from_square(int array_index)
 	int face_index = rand() % 4;
 	for (int i = 0; i < 4; i++)
 	{
-		if (Hive_Pod_Array[array_index].square_array[acceptable_faces[face_index]].return_obscured() == false)
+		Octohedron_Model* base_octohedron = Hive_Pod_Array[array_index].return_octohedron_base();
+
+		if (base_octohedron->square_array[acceptable_faces[face_index]].return_obscured() == false)
 		{
-			vec3 local_position = Hive_Pod_Array[array_index].return_local_translation_vector() + Hive_Pod_Array[array_index].square_array[acceptable_faces[face_index]].tessallation_vector;
+			vec3 local_position = Hive_Pod_Array[array_index].return_local_translation_vector() + base_octohedron->square_array[acceptable_faces[face_index]].tessallation_vector;
 			vec3 world_position = local_position + hive_translation_vector;
 
-			register_new_hive_pod(local_position, world_position, Hive_Pod_Array[array_index].octohedron_coordinates, Hive_Pod_Array[array_index].square_array[acceptable_faces[face_index]].face_grid_offset);
+			register_new_hive_pod(local_position, world_position, Hive_Pod_Array[array_index].octohedron_coordinates, base_octohedron->square_array[acceptable_faces[face_index]].face_grid_offset);
 
 			return;
 		}
@@ -325,12 +396,13 @@ void Hive_Object::extrude_from_hexagon(int array_index)
 	int face_num = rand() % 8;
 	for (int i = 0; i < 8; i++)
 	{
-		if (Hive_Pod_Array[array_index].hexagon_array[face_num].return_obscured() == false)
+		Octohedron_Model* base_octohedron = Hive_Pod_Array[array_index].return_octohedron_base();
+		if (base_octohedron->hexagon_array[face_num].return_obscured() == false)
 		{
-			vec3 local_position = Hive_Pod_Array[array_index].return_local_translation_vector() + Hive_Pod_Array[array_index].hexagon_array[face_num].tessallation_vector;
+			vec3 local_position = Hive_Pod_Array[array_index].return_local_translation_vector() + base_octohedron->hexagon_array[face_num].tessallation_vector;
 			vec3 world_position = local_position + hive_translation_vector;
 
-			register_new_hive_pod(local_position, world_position, Hive_Pod_Array[array_index].octohedron_coordinates, Hive_Pod_Array[array_index].hexagon_array[face_num].face_grid_offset);
+			register_new_hive_pod(local_position, world_position, Hive_Pod_Array[array_index].octohedron_coordinates, base_octohedron->hexagon_array[face_num].face_grid_offset);
 
 			return;
 		}
@@ -358,39 +430,41 @@ void Hive_Object::load_buffer_return_specs()
 
 void Hive_Object::Manage_Obscurity(Hive_Pod_Object* octo)
 {
+	Octohedron_Model* base_octohedron = octo->return_octohedron_base();
+
 	for (int i = 0; i < 6; i++)
 	{
-		int opposite_face_index = octo->square_array[i].opposite_square;
+		int opposite_face_index = base_octohedron->square_array[i].opposite_square;
 		Grid_Coord square_adjacent_coord;
 
-		square_adjacent_coord.grid_x = octo->octohedron_coordinates.grid_x + octo->square_array[i].face_grid_offset.grid_x;
-		square_adjacent_coord.grid_y = octo->octohedron_coordinates.grid_y + octo->square_array[i].face_grid_offset.grid_y;
-		square_adjacent_coord.grid_z = octo->octohedron_coordinates.grid_z + octo->square_array[i].face_grid_offset.grid_z;
+		square_adjacent_coord.grid_x = octo->octohedron_coordinates.grid_x + base_octohedron->square_array[i].face_grid_offset.grid_x;
+		square_adjacent_coord.grid_y = octo->octohedron_coordinates.grid_y + base_octohedron->square_array[i].face_grid_offset.grid_y;
+		square_adjacent_coord.grid_z = octo->octohedron_coordinates.grid_z + base_octohedron->square_array[i].face_grid_offset.grid_z;
 
 		if (Pod_Grid_Map.find(square_adjacent_coord) != Pod_Grid_Map.end())
 		{
-			octo->square_array[i].set_obscured(true);
-			octo->check_for_total_obscurity();
-			Pod_Grid_Map[square_adjacent_coord]->square_array[opposite_face_index].set_obscured(true);
-			Pod_Grid_Map[square_adjacent_coord]->check_for_total_obscurity();
+			base_octohedron->square_array[i].set_obscured(true);
+			base_octohedron->check_for_total_obscurity();
+			Pod_Grid_Map[square_adjacent_coord]->return_octohedron_base()->square_array[opposite_face_index].set_obscured(true);
+			Pod_Grid_Map[square_adjacent_coord]->return_octohedron_base()->check_for_total_obscurity();
 
 		}
 	}
 
 	for (int i = 0; i < 8; i++)
 	{
-		int opposite_face_index = octo->hexagon_array[i].opposite_hexagon;
+		int opposite_face_index = base_octohedron->hexagon_array[i].opposite_hexagon;
 		Grid_Coord hexagon_adjacent_coord;
-		hexagon_adjacent_coord.grid_x = octo->octohedron_coordinates.grid_x + octo->hexagon_array[i].face_grid_offset.grid_x;
-		hexagon_adjacent_coord.grid_y = octo->octohedron_coordinates.grid_y + octo->hexagon_array[i].face_grid_offset.grid_y;
-		hexagon_adjacent_coord.grid_z = octo->octohedron_coordinates.grid_z + octo->hexagon_array[i].face_grid_offset.grid_z;
+		hexagon_adjacent_coord.grid_x = octo->octohedron_coordinates.grid_x + base_octohedron->hexagon_array[i].face_grid_offset.grid_x;
+		hexagon_adjacent_coord.grid_y = octo->octohedron_coordinates.grid_y + base_octohedron->hexagon_array[i].face_grid_offset.grid_y;
+		hexagon_adjacent_coord.grid_z = octo->octohedron_coordinates.grid_z + base_octohedron->hexagon_array[i].face_grid_offset.grid_z;
 
 		if (Pod_Grid_Map.find(hexagon_adjacent_coord) != Pod_Grid_Map.end())
 		{
-			octo->hexagon_array[i].set_obscured(true);
-			octo->check_for_total_obscurity();
-			Pod_Grid_Map[hexagon_adjacent_coord]->hexagon_array[opposite_face_index].set_obscured(true);
-			Pod_Grid_Map[hexagon_adjacent_coord]->check_for_total_obscurity();
+			base_octohedron->hexagon_array[i].set_obscured(true);
+			base_octohedron->check_for_total_obscurity();
+			Pod_Grid_Map[hexagon_adjacent_coord]->return_octohedron_base()->hexagon_array[opposite_face_index].set_obscured(true);
+			Pod_Grid_Map[hexagon_adjacent_coord]->return_octohedron_base()->check_for_total_obscurity();
 		}
 	}
 }
@@ -411,6 +485,7 @@ void Hive_Object::register_new_hive_pod(vec3 local_translation,vec3 world_transl
 			Hive_Pod_Array[i].set_major_array_id(i);
 			if (i + 1 == max_list_pointer) max_list_pointer++;
 			num_current_hive_pods++;
+
 			Pod_Grid_Map[new_grid_coords] = &Hive_Pod_Array[i];
 
 			vec3 ship_start_pos = world_translation;
@@ -476,6 +551,11 @@ Hive_Object * Hive_Object::return_hive_engagement_target()
 	return hive_engagement_target;
 }
 
+vec3 Hive_Object::return_hive_translation_vector()
+{
+	return hive_translation_vector;
+}
+
 void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
 {
 	for (int i = 0; i < max_list_pointer; i++)
@@ -510,6 +590,7 @@ void Hive_Object::set_hive_ship_array_engagement_targets()
 	if (hive_ship_array_target != NULL)
 	{
 		hive_ship_array.set_ship_array_as_engagement_target(hive_ship_array_target);
+		hive_ship_array.set_array_state(Hive_Ship_Array::SWARM_STATE_ENGAGED);
 	}
 
 }
@@ -537,7 +618,7 @@ void Hive_Object::update_model_vertices()
 
 	for (int i = 0; i < num_current_hive_pods; i++)
 	{
-		if (Hive_Pod_Array[i].is_active()) Hive_Pod_Array[i].add_triangle_array_components(vertices, uvs, normals);
+		if (Hive_Pod_Array[i].is_active()) Hive_Pod_Array[i].return_octohedron_base()->add_triangle_array_components(vertices, uvs, normals);
 	}
 
 	indexed_vertices.clear();
@@ -550,10 +631,9 @@ void Hive_Object::update_model_vertices()
 
 void Hive_Object::update_ship_arrays()
 {
-
 	hive_ship_array.update_ships();
 
-	/*if (hive_ship_array.return_num_pods_to_add_to_hive() > 0)
+	if (hive_ship_array.return_num_pods_to_add_to_hive() > 0)
 	{
 		int num_pods_to_add = hive_ship_array.return_num_pods_to_add_to_hive();
 		
@@ -563,7 +643,7 @@ void Hive_Object::update_ship_arrays()
 		}
 
 		hive_ship_array.decrement_num_pods_to_add_to_hive(num_pods_to_add);
-	}*/
+	}
 }
 
 void Hive_Object::update_pod_array()

@@ -174,6 +174,7 @@ public:
 	void set_engaged(bool engaged);
 	void set_ship_array_as_engagement_target(Hive_Ship_Array* ship_array);
 	void set_ship_array_to_idle();
+	void set_array_state(int new_array_state);
 
 	void set_ship_array_damage(float damage);
 	float return_ship_array_damage();

@@ -6,6 +6,7 @@
 #define GLM_FORCE_SWIZZLE
 #include <glm/glm.hpp>
 #include<vector>
+#include<string>
 #include<map>
 #include<iostream>
 
@@ -191,56 +192,32 @@ struct Square
 	}
 };
 
-struct Octohedron_Model
+class Octohedron_Model
 {
+public:
+	void init_base_octohedron();
+
+	void init_squares(vec3 translation_vector);
+
+	void init_hexagons(vec3 translation_vector);
+
+	vec3 return_octo_vertex_vector(string vertex);
+
+	void add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals);
+
+	bool check_for_total_obscurity();
+
+	Hexagon hexagon_array[8];
+	Square square_array[6];
+
+private:
 	map<string, vec3> octo_vertices;
 
+	bool all_squares_obscured = false;
+
+	bool all_hexagons_obscured = false;
+
 	float d = sqrt(5);
-
-	void init_base_octohedron()
-	{
-		octo_vertices["v1234"] = { d, 0, 0 }; ;
-		octo_vertices["v1243"] = { 4 / d,	2 / d,	1 };
-		octo_vertices["v1324"] = { 4 / d, -3 / d,	0 };
-		octo_vertices["v1342"] = { 2 / d,	1 / d,	2 };
-		octo_vertices["v1423"] = { 2 / d, -4 / d, 1 };
-		octo_vertices["v1432"] = { 1 / d, -2 / d, 2 };
-
-		octo_vertices["v2134"] = { 4 / d, 2 / d, -1 };
-		octo_vertices["v2143"] = { 3 / d, 4 / d, 0 };
-		octo_vertices["v2314"] = { 2 / d,-4 / d,-1 };
-		octo_vertices["v2341"] = { -1 / d,2 / d,2 };
-		octo_vertices["v2431"] = { -2 / d,-1 / d,2 };
-		octo_vertices["v2413"] = { 0,-d,0 };
-
-		octo_vertices["v3142"] = -octo_vertices["v2413"];
-		octo_vertices["v3124"] = -octo_vertices["v2431"];
-		octo_vertices["v3241"] = -octo_vertices["v2314"];
-		octo_vertices["v3214"] = -octo_vertices["v2341"];
-		octo_vertices["v3412"] = -octo_vertices["v2143"];
-		octo_vertices["v3421"] = -octo_vertices["v2134"];
-
-		octo_vertices["v4123"] = -octo_vertices["v1432"];
-		octo_vertices["v4132"] = -octo_vertices["v1423"];
-		octo_vertices["v4231"] = -octo_vertices["v1324"];
-		octo_vertices["v4213"] = -octo_vertices["v1342"];
-		octo_vertices["v4312"] = -octo_vertices["v1243"];
-		octo_vertices["v4321"] = -octo_vertices["v1234"];
-
-		map<string, vec3>::iterator it;
-
-		glm::quat MyQuaternion;
-		glm::vec3 EulerAngles({ 0.0f,0.0f,1.1f });
-		MyQuaternion = glm::quat(EulerAngles);
-
-		for (it = octo_vertices.begin(); it != octo_vertices.end(); it++)
-		{
-			it->second *= 0.5;
-			it->second = rotate(MyQuaternion, it->second);
-		}
-	}
-
-
 };
 
 class Hive_Pod_Object
@@ -250,52 +227,8 @@ public:
 	{
 		base_octohedron = new Octohedron_Model;
 		base_octohedron->init_base_octohedron();
-
-		//octo_vertices["v1234"] = { d, 0, 0 }; ;
-		//octo_vertices["v1243"] = { 4 / d,	2 / d,	1 };
-		//octo_vertices["v1324"] = { 4 / d, -3 / d,	0 };
-		//octo_vertices["v1342"] = { 2 / d,	1 / d,	2 };
-		//octo_vertices["v1423"] = { 2 / d, -4 / d, 1 };
-		//octo_vertices["v1432"] = { 1 / d, -2 / d, 2 };
-
-		//octo_vertices["v2134"] = { 4 / d, 2 / d, -1 };
-		//octo_vertices["v2143"] = { 3 / d, 4 / d, 0 };
-		//octo_vertices["v2314"] = { 2 / d,-4 / d,-1 };
-		//octo_vertices["v2341"] = { -1 / d,2 / d,2 };
-		//octo_vertices["v2431"] = { -2 / d,-1 / d,2 };
-		//octo_vertices["v2413"] = { 0,-d,0 };
-
-		//octo_vertices["v3142"] = -octo_vertices["v2413"];
-		//octo_vertices["v3124"] = -octo_vertices["v2431"];
-		//octo_vertices["v3241"] = -octo_vertices["v2314"];
-		//octo_vertices["v3214"] = -octo_vertices["v2341"];
-		//octo_vertices["v3412"] = -octo_vertices["v2143"];
-		//octo_vertices["v3421"] = -octo_vertices["v2134"];
-
-		//octo_vertices["v4123"] = -octo_vertices["v1432"];
-		//octo_vertices["v4132"] = -octo_vertices["v1423"];
-		//octo_vertices["v4231"] = -octo_vertices["v1324"];
-		//octo_vertices["v4213"] = -octo_vertices["v1342"];
-		//octo_vertices["v4312"] = -octo_vertices["v1243"];
-		//octo_vertices["v4321"] = -octo_vertices["v1234"];
-
-		//map<string, vec3>::iterator it;
-
-		//glm::quat MyQuaternion;
-		//glm::vec3 EulerAngles({ 0.0f,0.0f,1.1f });
-		//MyQuaternion = glm::quat(EulerAngles);
-
-		//for (it = octo_vertices.begin(); it != octo_vertices.end(); it++)
-		//{
-		//	it->second *= 0.5;
-		//	it->second = rotate(MyQuaternion, it->second);
-		//}
 	}
 
-	map<string, vec3> octo_vertices;
-
-	Hexagon hexagon_array[8];
-	Square square_array[6];
 	Ship_Object* hive_ship_pointer = NULL;
 	Grid_Coord octohedron_coordinates;
 	Octohedron_Model* base_octohedron;
@@ -305,17 +238,9 @@ public:
 	vec3 world_translation_vector;
 	vec3 rotation_vector;
 
-	bool all_squares_obscured = false;
-	bool all_hexagons_obscured = false;
 	int index_hash = rand() % 100000;
-	float d = sqrt(5);
 
-	
 	void Init_Hive_Pod(glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
-
-	void init_squares(vec3 translation_vector);
-
-	void init_hexagons(vec3 translation_vector);
 
 	vec3 return_local_translation_vector();
 
@@ -323,9 +248,7 @@ public:
 
 	vec3 return_scaled_translation_vector();
 
-	void add_triangle_array_components(vector<glm::vec3> &vertices, vector<glm::vec2> &uvs, vector<glm::vec3> &normals);
-
-	void check_for_total_obscurity();
+	Octohedron_Model* return_octohedron_base();
 
 	void update_translation(vec3 local_translation,vec3 world_translation);
 
@@ -362,7 +285,7 @@ public:
 
 	Hive_Ship_Array hive_ship_array;
 	
-	Hive_Pod_Object Hive_Pod_Array[100];
+	Hive_Pod_Object Hive_Pod_Array[1000];
 	int num_current_hive_pods = 0;
 	int max_list_pointer = 1;
 
@@ -390,13 +313,11 @@ public:
 
 	model_buffer_specs loaded_specs;
 
-
 	bool check_engagement_target_fleet_destroyed();
 
 	void Init_Hive_Object(vec3 initial_location, vec3 Hive_Color, float ship_damage);
 
 	void update_translation_matrix();
-
 
 	void extrude_new_octo();
 
@@ -437,6 +358,8 @@ public:
 	mat4* return_hive_pods_model_matrices();
 
 	Hive_Object* return_hive_engagement_target();
+
+	vec3 return_hive_translation_vector();
 
 	Hive_Ship_Array* return_hive_ship_array();
 

@@ -99,6 +99,8 @@ int main()
 
 	glfwSetCursorPos(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
+	set_gameplay_manager_temp_func(&gameplay_manager);
+
 	double x_pos, y_pos;
 
 	do {

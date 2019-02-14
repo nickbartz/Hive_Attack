@@ -627,6 +627,11 @@ void Hive_Ship_Array::set_ship_array_to_idle()
 	hive_array_state = SWARM_STATE_IDLE;
 }
 
+void Hive_Ship_Array::set_array_state(int new_array_state)
+{
+	hive_array_state = SWARM_STATE_ENGAGED;
+}
+
 void Hive_Ship_Array::set_ship_array_damage(float damage)
 {
 	ship_array_damage = damage;
