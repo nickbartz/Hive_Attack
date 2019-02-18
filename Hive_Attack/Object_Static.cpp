@@ -1,34 +1,22 @@
 #include<Gameplay_Manager.h>
-#include<Scene_Objects.h>
+#include<Object_Static.h>
 #include<vector>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-
-#define GLM_ENABLE_EXPERIMENTAL
-#define GLM_FORCE_SWIZZLE
-#include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
-#include<vector>
-#include<map>
-#include<iostream>
 
-#include<2DText.h>
-#include<controls.h>
-#include<loadShader.h>
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
 #include<Render_Manager.h>
-#include<Ship_Array.h>
 
 using namespace std;
 using namespace glm;
-
 
 void Octohedron_Model::init_base_octohedron()
 {
@@ -215,8 +203,10 @@ bool Octohedron_Model::check_for_total_obscurity()
 
 // HIVE POD //
 
-void Hive_Pod_Object::Init_Hive_Pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
+void Hive_Pod_Object::Init_Hive_Pod(Service_Locator* _service_locator, vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
 {
+	service_locator = _service_locator;
+
 	base_octohedron = new Octohedron_Model;
 	base_octohedron->init_base_octohedron();
 
@@ -310,8 +300,9 @@ Hive_Object::Hive_Object()
 
 }
 
-void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, float hive_damage, model_buffer_specs* _hive_pod_model, model_buffer_specs* hive_ship_model)
+void Hive_Object::Init_Hive_Object(Service_Locator* _service_locator, vec3 initial_location, vec3 _Hive_Color, float hive_damage, model_buffer_specs* _hive_pod_model, model_buffer_specs* hive_ship_model)
 {
+	service_locator = _service_locator;
 	glm::quat MyQuaternion;
 	glm::vec3 EulerAngles({ 0.0f,0.0f,0.0f });
 	MyQuaternion = glm::quat(EulerAngles);
@@ -319,7 +310,7 @@ void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, floa
 
 	Hive_Color = _Hive_Color;
 
-	hive_ship_array.init_hive_ship_array(Hive_Color, hive_damage, hive_ship_model);
+	hive_ship_array.init_hive_ship_array(service_locator, Hive_Color, hive_damage, hive_ship_model);
 
 	hive_translation_vector = initial_location;
 
@@ -468,7 +459,7 @@ void Hive_Object::register_new_hive_pod(vec3 local_translation,vec3 world_transl
 {
 	Hive_Pod_Object new_octo;
 
-	new_octo.Init_Hive_Pod(local_translation, world_translation, base_grid_coords, face_grid_offset);
+	new_octo.Init_Hive_Pod(service_locator, local_translation, world_translation, base_grid_coords, face_grid_offset);
 	Grid_Coord new_grid_coords = new_octo.octohedron_coordinates;
 
 	for (int i = 0; i < max_list_pointer; i++)
@@ -567,10 +558,16 @@ void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
 
 bool Hive_Object::set_hive_engagement_target(Hive_Object * _engagement_hive)
 {
-	hive_engagement_target = _engagement_hive;
-	set_engaged(true);
-	set_hive_ship_array_engagement_targets();
-	return true;
+	if (_engagement_hive != NULL)
+	{
+		hive_engagement_target = _engagement_hive;
+		set_engaged(true);
+		hive_ship_array.set_hive_engagement_target(hive_engagement_target);
+		hive_ship_array.set_array_state(Hive_Ship_Array::SWARM_STATE_ENGAGED);
+		return true;
+	}
+	else return false;
+
 }
 
 void Hive_Object::set_engaged(bool engaged)
@@ -578,16 +575,19 @@ void Hive_Object::set_engaged(bool engaged)
 	hive_is_engaged = engaged;
 }
 
-void Hive_Object::set_hive_ship_array_engagement_targets()
+void Hive_Object::update()
 {
-	Hive_Ship_Array* hive_ship_array_target = hive_engagement_target->return_hive_ship_array();
-
-	if (hive_ship_array_target != NULL)
+	// If the hive is engaged, check to see if the hive it is engaged with still has a fleet, if not, go send the ships to plunder
+	if (is_engaged() && check_engagement_target_fleet_destroyed())
 	{
-		hive_ship_array.set_ship_array_as_engagement_target(hive_ship_array_target);
-		hive_ship_array.set_array_state(Hive_Ship_Array::SWARM_STATE_ENGAGED);
+		return_hive_ship_array()->send_ships_to_collect_enemy_hive_pods(return_hive_engagement_target());
 	}
 
+	// Update the hives ship arrays
+	update_ship_arrays();
+
+	// Update the hive's pod arrays
+	update_pod_array();
 }
 
 void Hive_Object::update_hive_pod_model_matrices()

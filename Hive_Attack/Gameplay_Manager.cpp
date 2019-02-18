@@ -13,14 +13,11 @@
 #include<map>
 #include<iostream>
 
-#include<2DText.h>
-#include<controls.h>
-#include<loadShader.h>
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
-#include<Render_Manager.h>
-#include<Scene_Objects.h>
+#include<Service_Locator.h>
+#include<Memory_Manager.h>
 
 using namespace std;
 using namespace glm;
@@ -28,6 +25,105 @@ using namespace glm;
 Gameplay_Manager::Gameplay_Manager()
 {
 
+}
+
+void Gameplay_Manager::Init(Service_Locator* _service_locator)
+{
+	service_locator = _service_locator;
+
+	load_base_octo();
+	load_base_ship();
+	load_base_projectile();
+
+	Hive_Object_Array.push_back(new Hive_Object);
+	Hive_Object_Array[0]->Init_Hive_Object(service_locator, { 0.0,0.0,0.0 }, { 0.75,0.75,0.0 }, 0.02, &hive_pod, &simple_ship);
+	for (int i = 0; i < 10; i++) Hive_Object_Array[0]->extrude_new_octo();
+	//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0]->hive_ship_array);
+
+	for (int i = 1; i < 10; i++)
+	{
+		int rand_x = rand() % 2 == 0 ? 1 : -1;
+		int rand_z = rand() % 2 == 0 ? 1 : -1;
+
+		float rgb_r = rand() % 100 / 100.0;
+		float rgb_g = rand() % 100 / 100.0;
+		float rgb_b = rand() % 100 / 100.0;
+
+		Hive_Object_Array.push_back(new Hive_Object);
+
+		Hive_Object_Array.back()->Init_Hive_Object(service_locator, { 10.0*rand_x*i,0.0,10.0*rand_z*i }, { rgb_r,rgb_g,rgb_b }, 0.02, &hive_pod, &simple_ship);
+		for (int p = 0; p < 3 + i; p++) Hive_Object_Array.back()->extrude_new_octo();
+		//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array.back()->hive_ship_array);
+	}
+}
+
+void Gameplay_Manager::Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array)
+{
+	hive_ship_array_manifest.add_hive_ship_array_to_manifest(ship_array);
+}
+
+void Gameplay_Manager::cleanup_scene_graph()
+{
+	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	{
+		//Cleanup_Object(&Hive_Object_Array[i]->loaded_specs);
+	}
+}
+
+void Gameplay_Manager::draw_scene_graph(GLFWwindow* window)
+{
+	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	{
+		Draw_Hive(window, SHADER_INSTANCE, lightPos, Hive_Object_Array[i]);
+
+		Draw_Hive_Ship_Array(window, SHADER_INSTANCE, lightPos, Hive_Object_Array[i]->return_hive_ship_array());
+	}
+
+	Draw_Projectiles(window, SHADER_INSTANCE);
+}
+
+void Gameplay_Manager::Draw_Hive(GLFWwindow* window, int shader_program, glm::vec3 lightPos, Hive_Object* hive_pointer)
+{
+	model_buffer_specs* hive_model_type = hive_pointer->return_loaded_hive_pod_model();
+
+	vec3 hive_pod_array_color = hive_pointer->Hive_Color;
+
+	mat4* hive_pod_model_matrices = hive_pointer->return_hive_pods_model_matrices();
+
+	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices);
+}
+
+void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, int shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer)
+{
+	model_buffer_specs* ship_model_type = ship_array_pointer->return_loaded_ship_specs();
+	vec3 ship_array_color = ship_array_pointer->return_ship_array_color();
+
+	mat4* ship_model_matrices = ship_array_pointer->return_ships_model_matrices();
+
+	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_model_matrices);
+}
+
+void Gameplay_Manager::Draw_Projectiles(GLFWwindow* window, int shader_program)
+{
+	vec3 ship_array_color = { 1.0f,1.0f,1.0f };
+
+	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, simple_projectile, projectile_array.size(), ship_array_color, projectile_model_matrices);
+}
+
+void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)
+{
+	for (int i = 1; i < Hive_Object_Array.size(); i++)
+	{
+		vec3 hive_translation_vector = Hive_Object_Array[i]->return_hive_translation_vector();
+
+		cout << hive_translation_vector.x << ", " << hive_translation_vector.z << endl;
+
+		if (abs(hive_translation_vector.x - x_pos) < 3.0 && abs(hive_translation_vector.z - y_pos) < 3.0)
+		{
+			Set_Hive_Engagement_Target(Hive_Object_Array[0], Hive_Object_Array[i]);
+			return;
+		}
+	}
 }
 
 void Gameplay_Manager::load_base_octo()
@@ -47,7 +143,7 @@ void Gameplay_Manager::load_base_octo()
 	octohedron_base.add_triangle_array_components(vertices, uvs, normals);
 	indexVBO(vertices, uvs, normals, indices, indexed_vertices, indexed_uvs, indexed_normals);
 	
-	hive_pod = create_object_buffers(indexed_vertices,indexed_uvs,indexed_normals,indices);
+	hive_pod = service_locator->return_render_manager()->create_object_buffers(indexed_vertices,indexed_uvs,indexed_normals,indices);
 }
 
 void Gameplay_Manager::load_base_ship()
@@ -64,42 +160,63 @@ void Gameplay_Manager::load_base_ship()
 	loadOBJ_no_uvs("Basic_Ship.obj", ship_vertices, ship_uvs, ship_normals);
 	indexVBO(ship_vertices, ship_uvs, ship_normals, ship_indices, ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals);
 
-	simple_ship = create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
+	simple_ship = service_locator->return_render_manager()->create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
 }
 
-void Gameplay_Manager::init_scene_graph()
+void Gameplay_Manager::load_base_projectile()
 {
-	load_base_octo();
-	load_base_ship();
-	
-	Hive_Object_Array.push_back(new Hive_Object);
-	Hive_Object_Array[0]->Init_Hive_Object({ 0.0,0.0,0.0 } ,{0.75,0.75,0.0}, 0.02, &hive_pod,&simple_ship );
-	for (int i = 0; i < 10; i++) Hive_Object_Array[0]->extrude_new_octo();
-	//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0]->hive_ship_array);
+	// Vertices for the Ship Model
+	std::vector<glm::vec3> ship_vertices;
+	std::vector<glm::vec2> ship_uvs;
+	std::vector<glm::vec3> ship_normals;
+	std::vector<glm::vec3> ship_indexed_vertices;
+	std::vector<glm::vec2> ship_indexed_uvs;
+	std::vector<glm::vec3> ship_indexed_normals;
+	std::vector<unsigned short> ship_indices;
 
-	for (int i = 1; i < 10; i++)
+	loadOBJ_no_uvs("Basic_Ship.obj", ship_vertices, ship_uvs, ship_normals);
+	indexVBO(ship_vertices, ship_uvs, ship_normals, ship_indices, ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals);
+
+	simple_projectile = service_locator->return_render_manager()->create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
+}
+
+void Gameplay_Manager::Remove_Hive_Ship_Array_From_Manifest(Hive_Ship_Array* ship_array)
+{
+	hive_ship_array_manifest.remove_hive_ship_array_from_manifest(ship_array);
+}
+
+void Gameplay_Manager::Create_New_Projectile(vec3 start_position, vec3 end_position)
+{
+	if (projectile_array.size() < 1000)
 	{
-		int rand_x = rand()% 2 == 0 ? 1: -1;
-		int rand_z = rand()% 2 == 0 ? 1: -1;
+		Projectile* new_projectile = service_locator->return_memory_manager()->new_projectile();
 
-		float rgb_r = rand() % 100/100.0;
-		float rgb_g = rand() % 100 / 100.0;
-		float rgb_b = rand() % 100 / 100.0;
+		new_projectile->Init(start_position, end_position);
 
-		Hive_Object_Array.push_back(new Hive_Object);
-		
-		Hive_Object_Array.back()->Init_Hive_Object({ 10.0*rand_x*i,0.0,10.0*rand_z*i }, { rgb_r,rgb_g,rgb_b }, 0.02, &hive_pod, &simple_ship);
-		for (int p = 0; p < 3 + i; p++) Hive_Object_Array.back()->extrude_new_octo();
-		//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array.back()->hive_ship_array);
+		projectile_array.push_back(new_projectile);
 	}
 }
 
-void Gameplay_Manager::cleanup_scene_graph()
+void Gameplay_Manager::Update_Projectile_Model_Matrices()
 {
-	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	int array_index = 0;
+
+	for (int i = 0; i < projectile_array.size(); i++)
 	{
-		//Cleanup_Object(&Hive_Object_Array[i]->loaded_specs);
+		if (projectile_array[i]->is_init())
+		{
+			projectile_model_matrices[array_index] = projectile_array[i]->Return_Model_Matrix();
+			array_index++;
+		}
 	}
+}
+
+bool Gameplay_Manager::Set_Hive_Engagement_Target(Hive_Object* hive, Hive_Object* hive_engagement_target)
+{
+	hive->set_hive_engagement_target(hive_engagement_target);
+	if (hive_engagement_target->return_hive_engagement_target() == NULL) hive_engagement_target->set_hive_engagement_target(hive);
+
+	return true;
 }
 
 void Gameplay_Manager::update_scene_graph()
@@ -112,91 +229,23 @@ void Gameplay_Manager::update_scene_graph()
 		{
 			// Erase the hive if the hive has no more pods
 			if (hive_object->return_num_current_pods() <= 0) Hive_Object_Array.erase(Hive_Object_Array.begin() + i);
-			else
-			{
-				// If the hive is engaged, check to see if the hive it is engaged with still has a fleet, if not, go send the ships to plunder
-				if (hive_object->is_engaged() && hive_object->check_engagement_target_fleet_destroyed())
-				{
-					hive_object->return_hive_ship_array()->send_ships_to_collect_enemy_hive_pods(hive_object->return_hive_engagement_target());
-				}
-
-				// Update the hives ship arrays
-				Hive_Object_Array[i]->update_ship_arrays();
-
-				// Update the hive's pod arrays
-				Hive_Object_Array[i]->update_pod_array();
-			}
+			else hive_object->update();
 		}
-
-		//if (rand() % 50 == 0)
-		//{
-		//	cout << "extruding new octo" << endl;
-		//	Hive_Object_Array[i]->extrude_new_octo();
-		//}
 	}
-}
 
-bool Gameplay_Manager::Set_Hive_Engagement_Target(Hive_Object* hive, Hive_Object* hive_engagement_target)
-{
-	hive->set_hive_engagement_target(hive_engagement_target);
-	if (hive_engagement_target->return_hive_engagement_target() == NULL) hive_engagement_target->set_hive_engagement_target(hive);
-
-	return true;
-}
-
-void Gameplay_Manager::draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader)
-{
-	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	for (int i = 0; i < projectile_array.size(); i++)
 	{
-		Draw_Hive(window, instance_render_shader, lightPos, Hive_Object_Array[i]);
+		projectile_array[i]->update();
 
-		Draw_Hive_Ship_Array(window, instance_render_shader, lightPos, Hive_Object_Array[i]->return_hive_ship_array());
-	}
-}
-
-void Gameplay_Manager::Draw_Hive(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Object* hive_pointer)
-{
-	model_buffer_specs* hive_model_type = hive_pointer->return_loaded_hive_pod_model();
-
-	vec3 hive_pod_array_color = hive_pointer->Hive_Color;
-
-	mat4* hive_pod_model_matrices = hive_pointer->return_hive_pods_model_matrices();
-
-	Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices);
-}
-
-void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer)
-{
-	model_buffer_specs* ship_model_type = ship_array_pointer->return_loaded_ship_specs();
-	vec3 ship_array_color = ship_array_pointer->return_ship_array_color();
-
-	mat4* ship_model_matrices = ship_array_pointer->return_ships_model_matrices();
-
-	Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_model_matrices);
-}
-
-void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)
-{
-	for (int i = 1; i < Hive_Object_Array.size(); i++)
-	{
-		vec3 hive_translation_vector = Hive_Object_Array[i]->return_hive_translation_vector();
-
-		cout << hive_translation_vector.x << ", " << hive_translation_vector.z << endl;
-
-		if (abs(hive_translation_vector.x - x_pos) < 3.0 && abs(hive_translation_vector.z - y_pos) < 3.0)
+		if (projectile_array[i]->Return_Lifespan() <= 0)
 		{
-			Set_Hive_Engagement_Target(Hive_Object_Array[0], Hive_Object_Array[i]);
-			return;
+			service_locator->return_memory_manager()->Deallocate_Projectile(projectile_array[i]);
+			projectile_array.erase(projectile_array.begin() + i);
 		}
 	}
+
+	Update_Projectile_Model_Matrices();
 }
 
-void Gameplay_Manager::Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array)
-{
-	hive_ship_array_manifest.add_hive_ship_array_to_manifest(ship_array);
-}
 
-void Gameplay_Manager::Remove_Hive_Ship_Array_From_Manifest(Hive_Ship_Array* ship_array)
-{
-	hive_ship_array_manifest.remove_hive_ship_array_from_manifest(ship_array);
-}
+

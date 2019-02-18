@@ -11,7 +11,7 @@
 #include<iostream>
 
 #include<Render_Manager.h>
-#include<Ship_Array.h>
+#include<Object_Dynamic.h>
 
 using namespace std;
 using namespace glm;
@@ -238,7 +238,7 @@ public:
 
 	int index_hash = rand() % 100000;
 
-	void Init_Hive_Pod(glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
+	void Init_Hive_Pod(Service_Locator* service_locator, glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
 
 	vec3 return_local_translation_vector();
 
@@ -267,6 +267,8 @@ public:
 	mat4 return_current_model_matrix();
 
 private:
+	Service_Locator * service_locator;
+
 	bool pod_is_active = false;
 	int major_array_id = 0;
 	float hive_pod_health = 100.0f;
@@ -302,7 +304,7 @@ public:
 
 	bool check_engagement_target_fleet_destroyed();
 
-	void Init_Hive_Object(vec3 initial_location, vec3 Hive_Color, float ship_damage, model_buffer_specs* hive_pod_model, model_buffer_specs* hive_ship_model);
+	void Init_Hive_Object(Service_Locator* service_locator, vec3 initial_location, vec3 Hive_Color, float ship_damage, model_buffer_specs* hive_pod_model, model_buffer_specs* hive_ship_model);
 
 	void update_translation_matrix();
 
@@ -354,9 +356,14 @@ public:
 
 	void set_engaged(bool engaged);
 
+	void update();
+
 private:
+	Service_Locator * service_locator;
+
 	model_buffer_specs * hive_pod_model = NULL;
 	mat4 hive_pod_model_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
-	void set_hive_ship_array_engagement_targets();
+
+
 
 };

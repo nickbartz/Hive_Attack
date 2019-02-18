@@ -19,34 +19,32 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="2DText.cpp" />
-    <ClCompile Include="controls.cpp" />
+    <ClCompile Include="Memory_Manager.cpp" />
     <ClCompile Include="Render_Manager.cpp" />
-    <ClCompile Include="loadShader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objloader.cpp" />
     <ClCompile Include="Gameplay_Manager.cpp" />
-    <ClCompile Include="Scene_Objects.cpp" />
+    <ClCompile Include="Object_Static.cpp" />
+    <ClCompile Include="Object_Dynamic.cpp" />
     <ClCompile Include="Service_Locator.cpp" />
-    <ClCompile Include="Ship_Array.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="vboindexer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="2DText.h" />
-    <ClInclude Include="controls.h" />
+    <ClInclude Include="Memory_Manager.h" />
     <ClInclude Include="Render_Manager.h" />
     <ClInclude Include="Global_Render_Variables.h" />
-    <ClInclude Include="loadShader.h" />
-    <ClInclude Include="Scene_Objects.h" />
+    <ClInclude Include="Object_Static.h" />
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="Gameplay_Manager.h" />
+    <ClInclude Include="Object_Dynamic.h" />
     <ClInclude Include="Service_Locator.h" />
-    <ClInclude Include="Ship_Array.h" />
     <ClInclude Include="texture.hpp" />
     <ClInclude Include="vboindexer.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Billboard_Render.fragmentshader" />
+    <None Include="Billboard_Render.vertexshader" />
     <None Include="Instance_Render.fragmentshader" />
     <None Include="Instance_Render.vertexshader" />
     <None Include="StandardShading.vertexshader" />

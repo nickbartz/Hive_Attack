@@ -16,21 +16,27 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 
-
-#include<2DText.h>
-#include<controls.h>
-#include<loadShader.h>
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
+#include<Service_Locator.h>
 #include<Render_Manager.h>
 #include<Gameplay_Manager.h>
+#include<Memory_Manager.h>
 
 
 using namespace std;
 using namespace glm;
 
+Service_Locator service_locator;
+Memory_Manager memory_manager;
 Gameplay_Manager gameplay_manager;
+Render_Manager render_manager;
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	render_manager.handle_mouse_input(window, button, action, mods);
+}
 
 int main()
 {
@@ -82,12 +88,14 @@ int main()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthFunc(GL_LESS);
 
-	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders("StandardShading.vertexshader", "StandardTransparentShading.fragmentshader");
-	GLuint Instance_Render_Shader = LoadShaders("Instance_Render.vertexshader", "Instance_Render.fragmentshader");
+	service_locator.register_service(&memory_manager);
+	service_locator.register_service(&render_manager);
+	service_locator.register_service(&gameplay_manager);
 
-	gameplay_manager.init_scene_graph();
-
+	memory_manager.Init(&service_locator);
+	render_manager.Init(&service_locator);
+	gameplay_manager.Init(&service_locator);
+	
 	// For speed computation
 	double lastTime = glfwGetTime();
 	int nbFrames = 0;
@@ -98,8 +106,6 @@ int main()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glfwSetCursorPos(window, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-
-	set_gameplay_manager_temp_func(&gameplay_manager);
 
 	srand(50);
 
@@ -126,9 +132,9 @@ int main()
 		gameplay_manager.update_scene_graph();
 
 		// Draw
-		computeMatricesFromInputs(window);
-		assign_uniform_pointers(programID, Instance_Render_Shader);
-		gameplay_manager.draw_scene_graph(window, programID, Instance_Render_Shader);
+		render_manager.computeMatricesFromInputs(window);
+
+		gameplay_manager.draw_scene_graph(window);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -139,9 +145,6 @@ int main()
 		glfwWindowShouldClose(window) == 0);
 
 	gameplay_manager.cleanup_scene_graph();
-
-	glDeleteProgram(programID);
-	glDeleteProgram(Instance_Render_Shader);
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();

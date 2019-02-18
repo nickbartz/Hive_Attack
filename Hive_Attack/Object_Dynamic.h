@@ -20,6 +20,38 @@ class Hive_Object;
 
 const int MAX_SHIPS_PER_HIVE = 1000;
 
+class Projectile
+{
+public:
+	Projectile();
+	void Init(vec3 start, vec3 finish);
+	void Destroy();
+	void update();
+	void update_transform_matrix(glm::vec3 transform_vector);
+	void Draw();
+	void Decrement_Lifespan();
+	int Return_Lifespan();
+	mat4 Return_Model_Matrix();
+	bool is_init();
+
+private:
+	int lifespan;
+
+	vec3 start_position;
+	vec3 end_position;
+	vec3 current_transform_vector;
+	vec3 direction_vector;
+
+	mat4 ScaleMatrix = scale(vec3{ 0.1f,0.1f,0.1f });
+	mat4 Transform_Matrix = glm::mat4(1.0);
+	mat4 RotationMatrix = glm::mat4(1.0);
+
+	float speed;
+
+	bool initialized = false;
+
+};
+
 class Ship_Object
 {
 public:
@@ -64,7 +96,7 @@ public:
 
 	void set_major_array_id(int major_array_id);
 
-	void ship_init(glm::vec3 start_location, vec3 _orbit_location);
+	void Init(Service_Locator* service_locator, glm::vec3 start_location, vec3 _orbit_location);
 
 	void update_rotation_matrix(glm::vec3 euler_rotation_vector);
 
@@ -122,6 +154,10 @@ public:
 
 	void remove_engaged_ship(Ship_Object * ship_object);
 
+	float return_ship_fire_cooldown();
+	void set_ship_fire_cooldown(float ship_fire_cooldown);
+	void decrement_ship_fire_cooldown();
+
 	void double_check_engaged_ships();
 
 	float calculate_damage_from_engaging_ships();
@@ -133,6 +169,8 @@ public:
 	void process_ship_damage();
 
 private:
+	Service_Locator * service_locator;
+
 	Ship_Object * current_engagement_focus = NULL;
 	Hive_Pod_Object* current_hive_pod_focus = NULL;
 	vector<Ship_Object*> ships_engaging;
@@ -142,6 +180,8 @@ private:
 
 	float ship_health = 100.0;
 	float ship_damage = 0.5;
+
+	float ship_fire_cooldown = 0.0;
 
 	int num_plundered_pods = 0;
 
@@ -158,7 +198,7 @@ public:
 	};
 
 	Hive_Ship_Array();
-	void init_hive_ship_array(vec3 ship_color, float ship_damage, model_buffer_specs* loaded_ship_specs);
+	void init_hive_ship_array(Service_Locator* service_locator, vec3 ship_color, float ship_damage, model_buffer_specs* loaded_ship_specs);
 	Ship_Object* add_ship_to_array(vec3 ship_location, vec3 ship_orbit_center);
 	void remove_ship_from_array(Ship_Object* ship);
 	Ship_Object* return_ship_in_array(int index);
@@ -172,7 +212,7 @@ public:
 	int return_hive_array_state();
 	model_buffer_specs* return_loaded_ship_specs();
 	void set_engaged(bool engaged);
-	void set_ship_array_as_engagement_target(Hive_Ship_Array* ship_array);
+	void set_hive_engagement_target(Hive_Object* hive_target);
 	void set_ship_array_to_idle();
 	void set_array_state(int new_array_state);
 
@@ -190,13 +230,13 @@ public:
 	int return_num_pods_to_add_to_hive();
 
 private:
-
+	Service_Locator * service_locator;
 
 	int uniq_id;
 
 	int hive_array_state = SWARM_STATE_IDLE;
 	Hive_Ship_Array* ship_array_engagement_target = NULL;
-	Hive_Object* hive_to_plunder = NULL;
+	Hive_Object* hive_engagement_target = NULL;
 
 	Ship_Object Ship_Object_Array[MAX_SHIPS_PER_HIVE];
 	int ship_model_type;
@@ -210,15 +250,6 @@ private:
 
 	model_buffer_specs* loaded_ship_specs;
 	mat4 ship_model_matrices[MAX_SHIPS_PER_HIVE];
-
-	// Vertices for the Ship Model
-	std::vector<glm::vec3> ship_vertices;
-	std::vector<glm::vec2> ship_uvs;
-	std::vector<glm::vec3> ship_normals;
-	std::vector<glm::vec3> ship_indexed_vertices;
-	std::vector<glm::vec2> ship_indexed_uvs;
-	std::vector<glm::vec3> ship_indexed_normals;
-	std::vector<unsigned short> ship_indices;
 };
 
 class Hive_Ship_Array_Manifest

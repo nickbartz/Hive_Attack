@@ -7,7 +7,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
-#include <loadShader.h>
 #include "texture.hpp"
 
 #include <2DText.h>

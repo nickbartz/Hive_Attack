@@ -1,35 +1,94 @@
-#include <Ship_Array.h>
+#include <Object_Dynamic.h>
 #include<Gameplay_Manager.h>
-#include<Scene_Objects.h>
-#include<vector>
+#include<Object_Static.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-
-#define GLM_ENABLE_EXPERIMENTAL
-#define GLM_FORCE_SWIZZLE
-#include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/transform.hpp>
-#include<vector>
-#include<map>
-#include<iostream>
 
-#include<2DText.h>
-#include<controls.h>
-#include<loadShader.h>
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
 #include<Render_Manager.h>
+#include<Service_Locator.h>
+
+// PROJECTILE
+
+Projectile::Projectile()
+{
+
+}
+
+void Projectile::Draw()
+{
+
+}
+
+void Projectile::Decrement_Lifespan()
+{
+	lifespan--;
+
+	if (lifespan <= 0) lifespan = 0;
+}
+
+int Projectile::Return_Lifespan()
+{
+	return lifespan;
+}
+
+mat4 Projectile::Return_Model_Matrix()
+{
+	return Transform_Matrix * RotationMatrix*ScaleMatrix;
+}
+
+bool Projectile::is_init()
+{
+	return initialized;
+}
+
+void Projectile::Init(vec3 start, vec3 finish)
+{
+	start_position = start;
+	end_position = finish;
+	current_transform_vector = start_position;
+	direction_vector = end_position - start_position;
+	speed = 0.05;
+
+	float distance = sqrt(direction_vector.x*direction_vector.x + direction_vector.z*direction_vector.z);
+
+	lifespan = distance/speed;
+	initialized = true;
+}
+
+void Projectile::Destroy()
+{
+	initialized = false;
+}
+
+void Projectile::update()
+{
+	current_transform_vector += normalize(direction_vector) * speed;
+	update_transform_matrix(current_transform_vector);
+
+	Decrement_Lifespan();
+}
+
+void Projectile::update_transform_matrix(glm::vec3 transform_vector)
+{
+	Transform_Matrix = glm::translate(transform_vector);
+	current_transform_vector = transform_vector;
+}
+
 
 // HIVE SHIP //
 
-void Ship_Object::ship_init(glm::vec3 start_location, vec3 _orbit_location)
+void Ship_Object::Init(Service_Locator* _service_locator, glm::vec3 start_location, vec3 _orbit_location)
 {
+	service_locator = _service_locator;
+	
 	update_transform_matrix(start_location);
 
 	orbit_location = _orbit_location;
@@ -37,7 +96,7 @@ void Ship_Object::ship_init(glm::vec3 start_location, vec3 _orbit_location)
 
 	int speed_rand = rand() % 5 + 5;
 
-	speed = speed_rand / 100.0;
+	speed = speed_rand / 250.0;
 	ship_damage = 0.1;
 }
 
@@ -340,6 +399,23 @@ void Ship_Object::remove_engaged_ship(Ship_Object* ship_object)
 	}
 }
 
+float Ship_Object::return_ship_fire_cooldown()
+{
+	return ship_fire_cooldown;
+}
+
+void Ship_Object::set_ship_fire_cooldown(float _ship_fire_cooldown)
+{
+	ship_fire_cooldown = _ship_fire_cooldown;
+}
+
+void Ship_Object::decrement_ship_fire_cooldown()
+{
+	ship_fire_cooldown -= 1.0f;
+
+	if (ship_fire_cooldown <= 0.0) ship_fire_cooldown = 0.0;
+}
+
 float Ship_Object::return_ship_damage()
 {
 	return ship_damage;
@@ -436,8 +512,6 @@ void Ship_Object::update_transform_matrix(glm::vec3 transform_vector)
 }
 
 
-
-
 // HIVE SHIP ARRAY MANIFEST //
 
 Hive_Ship_Array_Manifest::Hive_Ship_Array_Manifest()
@@ -484,8 +558,10 @@ Hive_Ship_Array::Hive_Ship_Array()
 	uniq_id = rand() % 1000;
 }
 
-void Hive_Ship_Array::init_hive_ship_array(vec3 ship_color, float ship_damage, model_buffer_specs* _loaded_ship_specs)
+void Hive_Ship_Array::init_hive_ship_array(Service_Locator* _service_locator, vec3 ship_color, float ship_damage, model_buffer_specs* _loaded_ship_specs)
 {
+	service_locator = _service_locator;
+
 	ship_array_color = ship_color;
 	ship_array_damage = ship_damage;
 
@@ -509,7 +585,7 @@ Ship_Object* Hive_Ship_Array::add_ship_to_array(vec3 current_location, vec3 orbi
 		if (Ship_Object_Array[i].is_active() == false)
 		{
 			Ship_Object new_ship;
-			new_ship.ship_init(current_location, orbit_location);
+			new_ship.Init(service_locator, current_location, orbit_location);
 			new_ship.home_orbit_location = orbit_location;
 			new_ship.set_ship_damage(return_ship_array_damage());
 			new_ship.set_major_array_id(i);
@@ -539,7 +615,7 @@ void Hive_Ship_Array::send_ships_to_collect_enemy_hive_pods(Hive_Object * destro
 	if (destroyed_hive != NULL)
 	{
 		hive_array_state = SWARM_STATE_PLUNDERING;
-		hive_to_plunder = destroyed_hive;
+		hive_engagement_target = destroyed_hive;
 	}
 }
 
@@ -635,12 +711,6 @@ Hive_Ship_Array* Hive_Ship_Array::return_engaged_ship_array()
 	return ship_array_engagement_target;
 }
 
-void Hive_Ship_Array::set_ship_array_as_engagement_target(Hive_Ship_Array* ship_array)
-{
-	ship_array_engagement_target = ship_array;
-	set_engaged(true);
-}
-
 void Hive_Ship_Array::set_ship_array_to_idle()
 {
 	hive_array_state = SWARM_STATE_IDLE;
@@ -667,6 +737,13 @@ void Hive_Ship_Array::set_engaged(bool _engaged)
 		hive_array_state = SWARM_STATE_IDLE;
 	}
 
+}
+
+void Hive_Ship_Array::set_hive_engagement_target(Hive_Object * hive_target)
+{
+	hive_engagement_target = hive_target;
+	ship_array_engagement_target = hive_target->return_hive_ship_array();
+	set_engaged(true);
 }
 
 void Hive_Ship_Array::update_ships()
@@ -722,12 +799,12 @@ void Hive_Ship_Array::update_ships()
 			// MANAGE PLUNDER STATE
 			else if (return_hive_array_state() == SWARM_STATE_PLUNDERING)
 			{
-				if (hive_to_plunder->return_num_current_pods() <= 0) set_ship_array_to_idle();
-				else if (hive_to_plunder != NULL && hive_to_plunder->return_num_current_pods() > 0)
+				if (hive_engagement_target->return_num_current_pods() <= 0) set_ship_array_to_idle();
+				else if (hive_engagement_target != NULL && hive_engagement_target->return_num_current_pods() > 0)
 				{
 					if (ship->return_current_hive_pod_target() == NULL)
 					{
-						Hive_Pod_Object* pod_to_plunder = hive_to_plunder->return_random_active_pod();
+						Hive_Pod_Object* pod_to_plunder = hive_engagement_target->return_random_active_pod();
 
 						if (pod_to_plunder != NULL)
 						{
@@ -759,6 +836,13 @@ void Hive_Ship_Array::update_ships()
 
 			if (return_hive_array_state() == SWARM_STATE_ENGAGED && ship->return_current_engagement_target() != NULL)
 			{
+				if (ship->return_ship_fire_cooldown() == 0.0)
+				{
+					service_locator->return_gameplay_manager()->Create_New_Projectile(ship->current_transform_vector, ship->return_current_engagement_target()->current_transform_vector);
+					ship->set_ship_fire_cooldown(100.0);
+				}
+				else ship->decrement_ship_fire_cooldown();
+
 				ship->set_new_orbit(ship->return_current_engagement_target()->current_transform_vector);
 			}
 
@@ -768,3 +852,4 @@ void Hive_Ship_Array::update_ships()
 		}
 	}
 }
+

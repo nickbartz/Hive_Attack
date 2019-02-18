@@ -1,152 +1,32 @@
-#include <Service_Locator.h>
+#include "Service_Locator.h"
 
-
-Global_Service_Locator::Global_Service_Locator()
+void Service_Locator::register_service(Gameplay_Manager * _gameplay_manager)
 {
-
+	gameplay_manager = _gameplay_manager;
 }
 
-UI * Global_Service_Locator::get_UI_pointer()
+void Service_Locator::register_service(Render_Manager * _render_manager)
 {
-	return UI_pointer;
+	render_manager = _render_manager;
 }
 
-Message_Array* Global_Service_Locator::get_MB_Pointer()
+void Service_Locator::register_service(Memory_Manager * _memory_manager)
 {
-	return msg_bus_pointer;
+	memory_manager = _memory_manager;
 }
 
-Draw_System* Global_Service_Locator::get_Draw_System_Pointer()
+Gameplay_Manager * Service_Locator::return_gameplay_manager()
 {
-	return draw_system_pointer;
+	return gameplay_manager;
 }
 
-Cursor* Global_Service_Locator::get_Cursor_Pointer()
+Render_Manager * Service_Locator::return_render_manager()
 {
-	return cursor_pointer;
+	return render_manager;
 }
 
-Game_Library* Global_Service_Locator::get_Game_Library()
+Memory_Manager * Service_Locator::return_memory_manager()
 {
-	return game_library;
+	return memory_manager;
 }
 
-Scene_Graph* Global_Service_Locator::get_Scene_Graph()
-{
-	return scene_pointer;
-}
-
-Path_Field* Global_Service_Locator::get_Pathfinder()
-{
-	return pathfinder_pointer;
-}
-
-void Global_Service_Locator::Register_UI_Pointer(UI* ui_pointer)
-{
-	UI_pointer = ui_pointer;
-}
-
-void Global_Service_Locator::Register_MB_Pointer(Message_Array* msg_pointer)
-{
-	msg_bus_pointer = msg_pointer;
-}
-
-void Global_Service_Locator::Register_Draw_System_Pointer(Draw_System* draw_pointer)
-{
-	draw_system_pointer = draw_pointer;
-}
-
-void Global_Service_Locator::Register_Cursor_Pointer(Cursor* cPointer)
-{
-	cursor_pointer = cPointer;
-}
-
-void Global_Service_Locator::Register_Game_Library(Game_Library* gLibrary)
-{
-	game_library = gLibrary;
-}
-
-
-void Global_Service_Locator::Register_Scene_Graph(Scene_Graph* sGraph)
-{
-	scene_pointer = sGraph;
-}
-
-void Global_Service_Locator::Register_Pathfinder(Path_Field* pFind)
-{
-	pathfinder_pointer = pFind;
-}
-
-void Global_Service_Locator::free()
-{
-}
-
-void Object_Service_Locator::Register_Pointer(Object* oPointer)
-{
-	object_pointer = oPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(Render_Component* sPointer)
-{
-	Render_Pointer = sPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(AI_Stats_Component* bPointer)
-{
-	AI_Stats_Pointer = bPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(AI_Movement_Component* mPointer)
-{
-	AI_Movement_Pointer = mPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(AI_Rel_Component* rPointer)
-{
-	AI_Rel_Pointer = rPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(AI_Item_Component* iPointer)
-{
-	AI_Item_Pointer = iPointer;
-}
-
-void Object_Service_Locator::Register_Pointer(AI_Job_Component* jPointer)
-{
-	AI_Job_Pointer = jPointer;
-}
-
-Object* Object_Service_Locator::Return_Object_Pointer()
-{
-	return object_pointer;
-}
-
-Render_Component* Object_Service_Locator::Return_Render_Pointer()
-{
-	return Render_Pointer;
-}
-
-AI_Stats_Component* Object_Service_Locator::Return_AI_Stats_Pointer()
-{
-	return AI_Stats_Pointer;
-}
-
-AI_Movement_Component* Object_Service_Locator::Return_AI_Movement_Pointer()
-{
-	return AI_Movement_Pointer;
-}
-
-AI_Rel_Component* Object_Service_Locator::Return_AI_Rel_Pointer()
-{
-	return AI_Rel_Pointer;
-}
-
-AI_Item_Component* Object_Service_Locator::Return_AI_Item_Pointer()
-{
-	return AI_Item_Pointer;
-}
-
-AI_Job_Component* Object_Service_Locator::Return_AI_Job_Pointer()
-{
-	return AI_Job_Pointer;
-}
