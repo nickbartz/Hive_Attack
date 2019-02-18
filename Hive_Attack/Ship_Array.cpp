@@ -1,5 +1,5 @@
 #include <Ship_Array.h>
-#include<Scene_Graph.h>
+#include<Gameplay_Manager.h>
 #include<Scene_Objects.h>
 #include<vector>
 
@@ -24,118 +24,26 @@
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
-#include<Draw_Object.h>
+#include<Render_Manager.h>
 
 // HIVE SHIP //
 
 void Ship_Object::ship_init(glm::vec3 start_location, vec3 _orbit_location)
 {
-	//loadOBJ_no_uvs("Basic_Ship.obj", vertices, uvs, normals);
-
-	//indexVBO(vertices, uvs, normals, indices, indexed_vertices, indexed_uvs, indexed_normals);
-
 	update_transform_matrix(start_location);
 
 	orbit_location = _orbit_location;
 	home_orbit_location = _orbit_location;
+
+	int speed_rand = rand() % 5 + 5;
+
+	speed = speed_rand / 100.0;
+	ship_damage = 0.1;
 }
 
-bool Ship_Object::is_active()
+void Ship_Object::add_engaged_ship(Ship_Object * ship_object)
 {
-	return active;
-}
-
-int Ship_Object::return_current_state()
-{
-	return ship_current_state;
-}
-
-void Ship_Object::set_current_state(int current_state)
-{
-	ship_current_state = current_state;
-}
-
-int Ship_Object::get_major_array_id()
-{
-	return major_array_id;
-}
-
-void Ship_Object::set_major_array_id(int _major_array_id)
-{
-	major_array_id = _major_array_id;
-}
-
-void Ship_Object::set_active(bool _active)
-{
-	active = _active;
-}
-
-void Ship_Object::update_rotation_matrix(glm::vec3 euler_rotation_vector)
-{
-	current_rotation_vector = euler_rotation_vector;
-	glm::quat MyQuaternion;
-	glm::vec3 EulerAngles(current_rotation_vector);
-	MyQuaternion = glm::quat(EulerAngles);
-	RotationMatrix = glm::toMat4(MyQuaternion);
-}
-
-void Ship_Object::update_transform_matrix(glm::vec3 transform_vector)
-{
-	Transform_Matrix = glm::translate(transform_vector);
-	current_transform_vector = transform_vector;
-}
-
-void Ship_Object::increment_rotation_matrix(vec3 incremental_rotation_vector)
-{
-	current_rotation_vector += incremental_rotation_vector;
-	update_rotation_matrix(current_rotation_vector);
-}
-
-void Ship_Object::increment_transform_matrix(glm::vec3 current_direction_vector)
-{
-	glm::vec3 new_transform_vector = current_transform_vector + current_direction_vector;
-	current_transform_vector = new_transform_vector;
-	update_transform_matrix(current_transform_vector);
-}
-
-vec3 Ship_Object::return_current_transform_vector()
-{
-	return current_transform_vector;
-}
-
-vec3 Ship_Object::return_current_rotation_vector()
-{
-	return current_rotation_vector;
-}
-
-mat4 Ship_Object::return_current_model_matrix()
-{
-	return Transform_Matrix * RotationMatrix*ScaleMatrix;
-}
-
-vec3 Ship_Object::return_home_orbit()
-{
-	return home_orbit_location;
-}
-
-void Ship_Object::rotate_directional_vector(float angle)
-{
-	float x_coord = ((current_direction_vector.x) * cos(angle)) - ((current_direction_vector.z)*sin(angle));
-	float z_coord = ((current_direction_vector.z) * cos(angle)) + ((current_direction_vector.x)*sin(angle));
-
-	current_direction_vector.x = x_coord;
-	current_direction_vector.z = z_coord;
-}
-
-void Ship_Object::set_new_orbit(glm::vec3 _orbit_location)
-{
-	orbit_location = _orbit_location;
-	steady_orbit = false;
-}
-
-void Ship_Object::set_home_orbit(vec3 _home_orbit_location)
-{
-	home_orbit_location = _home_orbit_location;
+	ships_engaging.push_back(ship_object);
 }
 
 float Ship_Object::calculate_distance_from_orbit_location()
@@ -158,6 +66,187 @@ float Ship_Object::calculate_distance_between_two_points(float x1, float z1, flo
 	float dd = sqrt(dx * dx + dz * dz);
 
 	return dd;
+}
+
+float Ship_Object::calculate_damage_from_engaging_ships()
+{
+	float damage = 0.0;
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		vec3 ship_pos = return_current_transform_vector();
+		vec3 engaging_ship_pos = ships_engaging[i]->return_current_transform_vector();
+
+		float distance = calculate_distance_between_two_points(ship_pos.x, ship_pos.z, engaging_ship_pos.x, engaging_ship_pos.z);
+
+		int int_distance = distance > 1 ? distance : 1;
+
+		int hit_chance = rand() % int_distance;
+
+		if (hit_chance <= 1)
+		{
+			damage += ships_engaging[i]->return_ship_damage();
+		}
+	}
+	return damage;
+}
+
+void Ship_Object::check_nearby_targets()
+{
+
+}
+
+void Ship_Object::calculate_needed_rotation_increment_from_goal(glm::vec3 goal_position)
+{
+	float x_1 = current_direction_vector.x;
+	float z_1 = current_direction_vector.z;
+
+	vec2 goal_direction_vector = { goal_position.x - current_transform_vector.x,goal_position.z - current_transform_vector.z };
+	goal_direction_vector = normalize(goal_direction_vector);
+
+	float dot = x_1 * goal_direction_vector.x + z_1 * goal_direction_vector.y;
+	float det = x_1 * goal_direction_vector.y - z_1 * goal_direction_vector.x;
+
+	float angle = atan2(det, dot);
+
+	if (isnan(angle)) needed_rotation_angle = 0.0;
+	else needed_rotation_angle = angle;
+}
+
+void Ship_Object::double_check_engaged_ships()
+{
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		if (ships_engaging[i]->is_active() == false) ships_engaging.erase(ships_engaging.begin() + i);
+	}
+}
+
+int Ship_Object::decrement_num_plundered_pods(int decrement)
+{
+	num_plundered_pods -= decrement;
+	return num_plundered_pods;
+}
+
+float Ship_Object::get_health()
+{
+	return ship_health;
+}
+
+int Ship_Object::get_major_array_id()
+{
+	return major_array_id;
+}
+
+bool Ship_Object::is_active()
+{
+	return active;
+}
+
+void Ship_Object::increment_rotation_matrix(vec3 incremental_rotation_vector)
+{
+	current_rotation_vector += incremental_rotation_vector;
+	update_rotation_matrix(current_rotation_vector);
+}
+
+void Ship_Object::increment_transform_matrix(glm::vec3 current_direction_vector)
+{
+	glm::vec3 new_transform_vector = current_transform_vector + current_direction_vector;
+	current_transform_vector = new_transform_vector;
+	update_transform_matrix(current_transform_vector);
+}
+
+int Ship_Object::increment_num_plundered_pods(int increment)
+{
+	num_plundered_pods += increment;
+	return num_plundered_pods;
+}
+
+void Ship_Object::move()
+{
+	float distance = calculate_distance_from_orbit_location();
+
+	if (distance < orbit_distance)
+	{
+		steady_orbit = false;
+	}
+	else if (distance > orbit_distance && distance < orbit_distance*1.5)
+	{
+		float body_pos_x = current_transform_vector.x;
+		float body_pos_z = current_transform_vector.z;
+
+		float angle = atan2(body_pos_z - orbit_location.z, body_pos_x - orbit_location.x);
+		
+		float body_vel_x = (sin(angle) * speed);
+		float body_vel_y = (cos(angle) * speed);
+
+		if (direction) current_direction_vector = { body_vel_x, 0.0, -body_vel_y };
+		else current_direction_vector = { -body_vel_x, 0.0, body_vel_y };
+
+		vec3 origin_direction = orbit_location - current_transform_vector;
+		origin_direction *= distance / orbit_distance * 0.0001;
+
+		// Move the ship back towards its stable orbit if it's moving further away 
+		current_direction_vector += origin_direction;
+	}
+	else if (distance > orbit_distance*1.5)
+	{
+		vec3 closest_entry_point = return_closest_orbit_entry_point();
+		calculate_needed_rotation_increment_from_goal(closest_entry_point);
+		rotate_directional_vector((needed_rotation_angle));
+		steady_orbit = false;
+	}
+
+	// Adjust Height if Necessary
+	float height_difference = abs(orbit_location.y - current_transform_vector.y);
+	int height_direction = height_difference / (orbit_location.y - current_transform_vector.y);
+
+	if (height_difference >= speed) current_direction_vector.y = speed * height_direction;
+	else current_direction_vector.y = orbit_location.y - current_transform_vector.y;
+
+	increment_transform_matrix(current_direction_vector);
+
+	float rotation_angle = atan2f(current_direction_vector.z, current_direction_vector.x);
+
+	if (return_current_state() == SHIP_STATE_ENGAGED || return_current_state() == SHIP_STATE_PLUNDERING)
+	{
+		if (direction) rotation_angle -= 3.14158 / 2;
+		else rotation_angle += 3.14158 / 2;
+	}
+
+	update_rotation_matrix({ rotation_angle, 0.0,-1.55 });
+}
+
+void Ship_Object::process_ship_damage()
+{
+	double_check_engaged_ships();
+
+	calculate_damage_from_engaging_ships();
+
+	Reduce_Ship_Health(calculate_damage_from_engaging_ships());
+}
+
+vec3 Ship_Object::return_current_transform_vector()
+{
+	return current_transform_vector;
+}
+
+vec3 Ship_Object::return_current_rotation_vector()
+{
+	return current_rotation_vector;
+}
+
+mat4 Ship_Object::return_current_model_matrix()
+{
+	return Transform_Matrix * RotationMatrix*ScaleMatrix;
+}
+
+int Ship_Object::return_current_state()
+{
+	return ship_current_state;
+}
+
+vec3 Ship_Object::return_home_orbit()
+{
+	return home_orbit_location;
 }
 
 vec3 Ship_Object::return_closest_orbit_entry_point()
@@ -226,86 +315,6 @@ vec3 Ship_Object::return_closest_orbit_entry_point()
 
 }
 
-void Ship_Object::calculate_needed_rotation_increment_from_goal(glm::vec3 goal_position)
-{
-	float x_1 = current_direction_vector.x;
-	float z_1 = current_direction_vector.z;
-
-	vec2 goal_direction_vector = { goal_position.x - current_transform_vector.x,goal_position.z - current_transform_vector.z };
-	goal_direction_vector = normalize(goal_direction_vector);
-
-	float dot = x_1 * goal_direction_vector.x + z_1 * goal_direction_vector.y;
-	float det = x_1 * goal_direction_vector.y - z_1 * goal_direction_vector.x;
-
-	float angle = atan2(det, dot);
-
-	if (isnan(angle)) needed_rotation_angle = 0.0;
-	else needed_rotation_angle = angle;
-}
-
-void Ship_Object::move()
-{
-	float distance = calculate_distance_from_orbit_location();
-
-	if (distance < orbit_distance)
-	{
-		steady_orbit = false;
-	}
-	else if (distance > orbit_distance && distance < orbit_distance*1.5)
-	{
-		float body_pos_x = current_transform_vector.x;
-		float body_pos_z = current_transform_vector.z;
-
-		float angle = atan2(body_pos_z - orbit_location.z, body_pos_x - orbit_location.x);
-
-		float grav_accel = speed;
-
-		float body_vel_x = (sin(angle) * grav_accel);
-		float body_vel_y = (cos(angle) * grav_accel);
-
-		if (direction) current_direction_vector = { body_vel_x, 0.0, -body_vel_y };
-		else current_direction_vector = { -body_vel_x, 0.0, body_vel_y };
-
-		vec3 origin_direction = orbit_location - current_transform_vector;
-		origin_direction *= distance / orbit_distance * 0.0001;
-
-		// Move the ship back towards its stable orbit if it's moving further away 
-		current_direction_vector += origin_direction;
-	}
-	else if (distance > orbit_distance*1.5)
-	{
-		vec3 closest_entry_point = return_closest_orbit_entry_point();
-		calculate_needed_rotation_increment_from_goal(closest_entry_point);
-		rotate_directional_vector((needed_rotation_angle));
-		steady_orbit = false;
-	}
-
-	increment_transform_matrix(current_direction_vector);
-
-	float rotation_angle = atan2f(current_direction_vector.z, current_direction_vector.x);
-
-	update_rotation_matrix({ rotation_angle, 0.0,-1.55 });
-}
-
-void Ship_Object::check_nearby_targets()
-{
-
-}
-
-void Ship_Object::set_engagement_target(Ship_Object* ship_object)
-{
-	if (ship_object != NULL)
-	{
-		current_engagement_focus = ship_object;
-		ship_object->add_engaged_ship(this);
-		orbit_location = current_engagement_focus->return_current_transform_vector();
-		if (current_engagement_focus->direction == 0) direction = 0;
-		else direction = 1;
-
-		set_current_state(SHIP_STATE_ENGAGED);
-	}
-}
-
 void Ship_Object::remove_engagement_target()
 {
 	current_engagement_focus->remove_engaged_ship(this);
@@ -318,14 +327,22 @@ Ship_Object* Ship_Object::return_current_engagement_target()
 	return current_engagement_focus;
 }
 
-void Ship_Object::set_hive_pod_plunder_target(Hive_Pod_Object * hive_pod)
-{
-	current_hive_pod_focus = hive_pod;
-}
-
 void Ship_Object::remove_hive_pod_plunder_target()
 {
 	current_hive_pod_focus = NULL;
+}
+
+void Ship_Object::remove_engaged_ship(Ship_Object* ship_object)
+{
+	for (int i = 0; i < ships_engaging.size(); i++)
+	{
+		if (ships_engaging[i] == ship_object) ships_engaging.erase(ships_engaging.begin() + i);
+	}
+}
+
+float Ship_Object::return_ship_damage()
+{
+	return ship_damage;
 }
 
 Hive_Pod_Object * Ship_Object::return_current_hive_pod_target()
@@ -341,63 +358,13 @@ void Ship_Object::Reduce_Ship_Health(float health_decrement)
 	}
 }
 
-float Ship_Object::get_health()
+void Ship_Object::rotate_directional_vector(float angle)
 {
-	return ship_health;
-}
+	float x_coord = ((current_direction_vector.x) * cos(angle)) - ((current_direction_vector.z)*sin(angle));
+	float z_coord = ((current_direction_vector.z) * cos(angle)) + ((current_direction_vector.x)*sin(angle));
 
-float Ship_Object::return_ship_damage()
-{
-	return ship_damage;
-}
-
-void Ship_Object::set_ship_damage(float _ship_damage)
-{
-	ship_damage = _ship_damage;
-}
-
-void Ship_Object::add_engaged_ship(Ship_Object * ship_object)
-{
-	ships_engaging.push_back(ship_object);
-}
-
-void Ship_Object::remove_engaged_ship(Ship_Object* ship_object)
-{
-	for (int i = 0; i < ships_engaging.size(); i++)
-	{
-		if (ships_engaging[i] == ship_object) ships_engaging.erase(ships_engaging.begin() + i);
-	}
-}
-
-void Ship_Object::double_check_engaged_ships()
-{
-	for (int i = 0; i < ships_engaging.size(); i++)
-	{
-		if (ships_engaging[i]->is_active() == false) ships_engaging.erase(ships_engaging.begin() + i);
-	}
-}
-
-float Ship_Object::calculate_damage_from_engaging_ships()
-{
-	float damage = 0.0;
-	for (int i = 0; i < ships_engaging.size(); i++)
-	{
-		damage += ships_engaging[i]->return_ship_damage();
-	}
-
-	return damage;
-}
-
-int Ship_Object::increment_num_plundered_pods(int increment)
-{
-	num_plundered_pods += increment;
-	return num_plundered_pods;
-}
-
-int Ship_Object::decrement_num_plundered_pods(int decrement)
-{
-	num_plundered_pods -= decrement;
-	return num_plundered_pods;
+	current_direction_vector.x = x_coord;
+	current_direction_vector.z = z_coord;
 }
 
 int Ship_Object::return_num_plundered_pods()
@@ -405,14 +372,70 @@ int Ship_Object::return_num_plundered_pods()
 	return num_plundered_pods;
 }
 
-void Ship_Object::process_ship_damage()
+void Ship_Object::set_new_orbit(glm::vec3 _orbit_location)
 {
-	double_check_engaged_ships();
-
-	calculate_damage_from_engaging_ships();
-
-	Reduce_Ship_Health(calculate_damage_from_engaging_ships());
+	orbit_location = _orbit_location;
+	steady_orbit = false;
 }
+
+void Ship_Object::set_home_orbit(vec3 _home_orbit_location)
+{
+	home_orbit_location = _home_orbit_location;
+}
+
+void Ship_Object::set_current_state(int current_state)
+{
+	ship_current_state = current_state;
+}
+
+void Ship_Object::set_major_array_id(int _major_array_id)
+{
+	major_array_id = _major_array_id;
+}
+
+void Ship_Object::set_active(bool _active)
+{
+	active = _active;
+}
+
+void Ship_Object::set_ship_damage(float _ship_damage)
+{
+	ship_damage = _ship_damage;
+}
+
+void Ship_Object::set_engagement_target(Ship_Object* ship_object)
+{
+	if (ship_object != NULL)
+	{
+		current_engagement_focus = ship_object;
+		ship_object->add_engaged_ship(this);
+		orbit_location = current_engagement_focus->return_current_transform_vector();
+		if (current_engagement_focus->direction == 0) direction = 0;
+		else direction = 1;
+	}
+}
+
+void Ship_Object::set_hive_pod_plunder_target(Hive_Pod_Object * hive_pod)
+{
+	current_hive_pod_focus = hive_pod;
+}
+
+void Ship_Object::update_rotation_matrix(glm::vec3 euler_rotation_vector)
+{
+	current_rotation_vector = euler_rotation_vector;
+	glm::quat MyQuaternion;
+	glm::vec3 EulerAngles(current_rotation_vector);
+	MyQuaternion = glm::quat(EulerAngles);
+	RotationMatrix = glm::toMat4(MyQuaternion);
+}
+
+void Ship_Object::update_transform_matrix(glm::vec3 transform_vector)
+{
+	Transform_Matrix = glm::translate(transform_vector);
+	current_transform_vector = transform_vector;
+}
+
+
 
 
 // HIVE SHIP ARRAY MANIFEST //
@@ -461,15 +484,12 @@ Hive_Ship_Array::Hive_Ship_Array()
 	uniq_id = rand() % 1000;
 }
 
-void Hive_Ship_Array::init_hive_ship_array(vec3 ship_color, float ship_damage)
+void Hive_Ship_Array::init_hive_ship_array(vec3 ship_color, float ship_damage, model_buffer_specs* _loaded_ship_specs)
 {
 	ship_array_color = ship_color;
 	ship_array_damage = ship_damage;
 
-	loadOBJ_no_uvs("Basic_Ship.obj", ship_vertices, ship_uvs, ship_normals);
-	indexVBO(ship_vertices, ship_uvs, ship_normals, ship_indices, ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals);
-
-	loaded_ship_specs = create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
+	loaded_ship_specs = _loaded_ship_specs;
 }
 
 int Hive_Ship_Array::array_begin()
@@ -489,8 +509,7 @@ Ship_Object* Hive_Ship_Array::add_ship_to_array(vec3 current_location, vec3 orbi
 		if (Ship_Object_Array[i].is_active() == false)
 		{
 			Ship_Object new_ship;
-			new_ship.current_transform_vector = current_location;
-			new_ship.orbit_location = orbit_location;
+			new_ship.ship_init(current_location, orbit_location);
 			new_ship.home_orbit_location = orbit_location;
 			new_ship.set_ship_damage(return_ship_array_damage());
 			new_ship.set_major_array_id(i);
@@ -531,7 +550,7 @@ int Hive_Ship_Array::return_hive_array_state()
 
 model_buffer_specs* Hive_Ship_Array::return_loaded_ship_specs()
 {
-	return &loaded_ship_specs;
+	return loaded_ship_specs;
 }
 
 void Hive_Ship_Array::remove_ship_from_array(Ship_Object* ship)
@@ -661,6 +680,7 @@ void Hive_Ship_Array::update_ships()
 			if (return_hive_array_state() == SWARM_STATE_IDLE)
 			{
 				ship->set_new_orbit(ship->return_home_orbit());
+				ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
 
 				if (ship->return_num_plundered_pods() > 0)
 				{
@@ -680,17 +700,19 @@ void Hive_Ship_Array::update_ships()
 					if (engaged_ship != NULL)
 					{
 						// SET THE SHIP'S ENGAGEMENT TARGET TO THE FOUND SHIP
+						ship->set_current_state(Ship_Object::SHIP_STATE_ENGAGED);
 						ship->set_engagement_target(engaged_ship);
 
 						//IF THE NEW ENGAGEMENT TARGET ISN'T ALREADY ENGAGED, RECIPROCALLY ENGAGE IT 
-						if (engaged_ship->return_current_state() == false)
+						if (engaged_ship->return_current_state() == Ship_Object::SHIP_STATE_IDLE)
 						{
+							engaged_ship->set_current_state(Ship_Object::SHIP_STATE_ENGAGED);
 							engaged_ship->set_engagement_target(ship);
 						}
 					}
 				}
 				// IF THE SHIP IS ENGAGED, BUT ITS ENGAGEMENT IS NO LONGER AROUND
-				else if (ship->return_current_state() == Ship_Object::SHIP_STATE_ENGAGED && ship->return_current_engagement_target() == NULL || ship->return_current_engagement_target()->get_health() <= 0.0)
+				else if (ship->return_current_state() == Ship_Object::SHIP_STATE_ENGAGED && (ship->return_current_engagement_target() == NULL || ship->return_current_engagement_target()->get_health() <= 0.0))
 				{
 					ship->remove_engagement_target();
 					ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
@@ -720,6 +742,7 @@ void Hive_Ship_Array::update_ships()
 					{
 						if (ship->return_current_hive_pod_target()->return_hive_pod_health() > 0.0f)
 						{
+							// NEED TO UPDATE THIS FUNCTION TO MIRROR THE WAY IN WHICH SHIPS TAKE DAMAGE
 							ship->return_current_hive_pod_target()->take_damage(ship->return_ship_damage());
 
 							if (ship->return_current_hive_pod_target()->return_hive_pod_health() <= 0.0f) ship->increment_num_plundered_pods(1);

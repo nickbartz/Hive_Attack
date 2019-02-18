@@ -21,11 +21,11 @@
   <ItemGroup>
     <ClCompile Include="2DText.cpp" />
     <ClCompile Include="controls.cpp" />
-    <ClCompile Include="Draw_Object.cpp" />
+    <ClCompile Include="Render_Manager.cpp" />
     <ClCompile Include="loadShader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objloader.cpp" />
-    <ClCompile Include="Scene_Graph.cpp" />
+    <ClCompile Include="Gameplay_Manager.cpp" />
     <ClCompile Include="Scene_Objects.cpp" />
     <ClCompile Include="Service_Locator.cpp" />
     <ClCompile Include="Ship_Array.cpp" />
@@ -35,12 +35,12 @@
   <ItemGroup>
     <ClInclude Include="2DText.h" />
     <ClInclude Include="controls.h" />
-    <ClInclude Include="Draw_Object.h" />
+    <ClInclude Include="Render_Manager.h" />
     <ClInclude Include="Global_Render_Variables.h" />
     <ClInclude Include="loadShader.h" />
     <ClInclude Include="Scene_Objects.h" />
     <ClInclude Include="objloader.hpp" />
-    <ClInclude Include="Scene_Graph.h" />
+    <ClInclude Include="Gameplay_Manager.h" />
     <ClInclude Include="Service_Locator.h" />
     <ClInclude Include="Ship_Array.h" />
     <ClInclude Include="texture.hpp" />

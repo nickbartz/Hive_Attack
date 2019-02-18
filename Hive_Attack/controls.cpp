@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include<Scene_Graph.h>
+#include<Gameplay_Manager.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_SWIZZLE

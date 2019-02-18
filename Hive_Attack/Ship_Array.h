@@ -10,7 +10,7 @@
 #include<map>
 #include<iostream>
 
-#include<Draw_Object.h>
+#include<Render_Manager.h>
 
 using namespace std;
 using namespace glm;
@@ -23,7 +23,7 @@ const int MAX_SHIPS_PER_HIVE = 1000;
 class Ship_Object
 {
 public:
-	float speed = (rand() % 5 + 7) / 100.0;
+	float speed = 0.05;
 
 	vec3 current_transform_vector = { 0.0,0.0,0.0 };
 	vec3 current_rotation_vector = { 0.0,0.0,0.0 };
@@ -158,7 +158,7 @@ public:
 	};
 
 	Hive_Ship_Array();
-	void init_hive_ship_array(vec3 ship_color, float ship_damage);
+	void init_hive_ship_array(vec3 ship_color, float ship_damage, model_buffer_specs* loaded_ship_specs);
 	Ship_Object* add_ship_to_array(vec3 ship_location, vec3 ship_orbit_center);
 	void remove_ship_from_array(Ship_Object* ship);
 	Ship_Object* return_ship_in_array(int index);
@@ -208,7 +208,7 @@ private:
 	vec3 ship_array_color = { 0.75,0.75,0.0 };
 	float ship_array_damage = 0.5;
 
-	model_buffer_specs loaded_ship_specs;
+	model_buffer_specs* loaded_ship_specs;
 	mat4 ship_model_matrices[MAX_SHIPS_PER_HIVE];
 
 	// Vertices for the Ship Model

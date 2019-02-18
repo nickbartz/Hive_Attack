@@ -1,4 +1,4 @@
-#include<Scene_Graph.h>
+#include<Gameplay_Manager.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -19,7 +19,7 @@
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
-#include<Draw_Object.h>
+#include<Render_Manager.h>
 #include<Scene_Objects.h>
 
 using namespace std;
@@ -30,7 +30,7 @@ Gameplay_Manager::Gameplay_Manager()
 
 }
 
-loaded_model_buffer Gameplay_Manager::load_base_octo()
+void Gameplay_Manager::load_base_octo()
 {
 	// Temp Containers for the Octohedron's Details
 	std::vector<glm::vec3> vertices;
@@ -47,43 +47,58 @@ loaded_model_buffer Gameplay_Manager::load_base_octo()
 	octohedron_base.add_triangle_array_components(vertices, uvs, normals);
 	indexVBO(vertices, uvs, normals, indices, indexed_vertices, indexed_uvs, indexed_normals);
 	
-	hive_pod = load_model_buffers(indexed_vertices,indexed_uvs,indexed_normals,indices);
+	hive_pod = create_object_buffers(indexed_vertices,indexed_uvs,indexed_normals,indices);
+}
+
+void Gameplay_Manager::load_base_ship()
+{
+	// Vertices for the Ship Model
+	std::vector<glm::vec3> ship_vertices;
+	std::vector<glm::vec2> ship_uvs;
+	std::vector<glm::vec3> ship_normals;
+	std::vector<glm::vec3> ship_indexed_vertices;
+	std::vector<glm::vec2> ship_indexed_uvs;
+	std::vector<glm::vec3> ship_indexed_normals;
+	std::vector<unsigned short> ship_indices;
+
+	loadOBJ_no_uvs("Basic_Ship.obj", ship_vertices, ship_uvs, ship_normals);
+	indexVBO(ship_vertices, ship_uvs, ship_normals, ship_indices, ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals);
+
+	simple_ship = create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
 }
 
 void Gameplay_Manager::init_scene_graph()
 {
 	load_base_octo();
+	load_base_ship();
 	
 	Hive_Object_Array.push_back(new Hive_Object);
-	Hive_Object_Array[0]->Init_Hive_Object({ 0.0,0.0,0.0 } ,{0.75,0.75,0.0}, 0.02);
+	Hive_Object_Array[0]->Init_Hive_Object({ 0.0,0.0,0.0 } ,{0.75,0.75,0.0}, 0.02, &hive_pod,&simple_ship );
 	for (int i = 0; i < 10; i++) Hive_Object_Array[0]->extrude_new_octo();
-	Hive_Object_Array[0]->load_buffer_return_specs();
-	Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0]->hive_ship_array);
+	//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0]->hive_ship_array);
 
-	for (int i = 1; i < 11; i++)
+	for (int i = 1; i < 10; i++)
 	{
-		int rand_x = rand()%2 == 0 ? 1: -1;
-		int rand_z = rand()%2 == 0 ? 1: -1;
+		int rand_x = rand()% 2 == 0 ? 1: -1;
+		int rand_z = rand()% 2 == 0 ? 1: -1;
 
 		float rgb_r = rand() % 100/100.0;
 		float rgb_g = rand() % 100 / 100.0;
 		float rgb_b = rand() % 100 / 100.0;
 
 		Hive_Object_Array.push_back(new Hive_Object);
-		Hive_Object_Array.back()->Init_Hive_Object({ 10.0*rand_x*i,0.0,10.0*rand_z*i }, { rgb_r,rgb_g,rgb_b }, 0.02);
+		
+		Hive_Object_Array.back()->Init_Hive_Object({ 10.0*rand_x*i,0.0,10.0*rand_z*i }, { rgb_r,rgb_g,rgb_b }, 0.02, &hive_pod, &simple_ship);
 		for (int p = 0; p < 3 + i; p++) Hive_Object_Array.back()->extrude_new_octo();
-		Hive_Object_Array.back()->load_buffer_return_specs();
-		Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array.back()->hive_ship_array);
+		//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array.back()->hive_ship_array);
 	}
-
-
 }
 
 void Gameplay_Manager::cleanup_scene_graph()
 {
 	for (int i = 0; i < Hive_Object_Array.size(); i++)
 	{
-		Cleanup_Object(&Hive_Object_Array[i]->loaded_specs);
+		//Cleanup_Object(&Hive_Object_Array[i]->loaded_specs);
 	}
 }
 
@@ -131,22 +146,23 @@ bool Gameplay_Manager::Set_Hive_Engagement_Target(Hive_Object* hive, Hive_Object
 
 void Gameplay_Manager::draw_scene_graph(GLFWwindow* window, GLuint shader_program, GLuint instance_render_shader)
 {
-
 	for (int i = 0; i < Hive_Object_Array.size(); i++)
 	{
 		Draw_Hive(window, instance_render_shader, lightPos, Hive_Object_Array[i]);
+
 		Draw_Hive_Ship_Array(window, instance_render_shader, lightPos, Hive_Object_Array[i]->return_hive_ship_array());
 	}
 }
 
 void Gameplay_Manager::Draw_Hive(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Object* hive_pointer)
 {
-	//model_buffer_specs* hive_model_type = hive_pointer->return_loaded_hive_specs();
-	//vec3 hive_pod_array_color = hive_pointer->Hive_Color;
+	model_buffer_specs* hive_model_type = hive_pointer->return_loaded_hive_pod_model();
 
-	//mat4* hive_pod_model_matrices = hive_pointer->return_hive_pods_model_matrices();
+	vec3 hive_pod_array_color = hive_pointer->Hive_Color;
 
-	//Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices);
+	mat4* hive_pod_model_matrices = hive_pointer->return_hive_pods_model_matrices();
+
+	Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices);
 }
 
 void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, GLuint shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer)
@@ -173,11 +189,6 @@ void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)
 			return;
 		}
 	}
-}
-
-model_buffer_specs* Gameplay_Manager::Return_Hive_Pod_Model_Buffer_Specs(int hive_pod_model)
-{
-	return &Hive_Object_Array[0]->loaded_specs;
 }
 
 void Gameplay_Manager::Add_Hive_Ship_Array_To_Manifest(Hive_Ship_Array* ship_array)

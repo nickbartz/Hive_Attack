@@ -12,16 +12,6 @@
 using namespace std;
 using namespace glm;
 
-struct loaded_model_buffer
-{
-	GLuint VertexArrayID;
-	GLuint vertexbuffer;
-	GLuint uvbuffer;
-	GLuint normalbuffer;
-	GLuint elementbuffer;
-	unsigned int num_indices = 0;
-};
-
 struct model_buffer_specs
 {
 	GLuint VertexArrayID;
@@ -43,8 +33,6 @@ struct instanced_buffer_specs
 	GLuint ship_model_matrix_buffer;
 	int max_objects_in_instance = 0;
 };
-
-loaded_model_buffer load_model_buffers(vector<glm::vec3> &indexed_vertices, vector<glm::vec2> indexed_uvs, vector<glm::vec3> indexed_normals, vector<unsigned short> indices);
 
 model_buffer_specs create_object_buffers(vector<glm::vec3> &indexed_vertices, vector<glm::vec2> indexed_uvs, vector<glm::vec3> indexed_normals, vector<unsigned short> indices);
 

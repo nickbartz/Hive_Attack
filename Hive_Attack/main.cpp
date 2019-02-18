@@ -23,8 +23,8 @@
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
-#include<Draw_Object.h>
-#include<Scene_Graph.h>
+#include<Render_Manager.h>
+#include<Gameplay_Manager.h>
 
 
 using namespace std;
@@ -101,6 +101,8 @@ int main()
 
 	set_gameplay_manager_temp_func(&gameplay_manager);
 
+	srand(50);
+
 	double x_pos, y_pos;
 
 	do {
@@ -109,7 +111,7 @@ int main()
 		double currentTime = glfwGetTime();
 		nbFrames++;
 		if (currentTime - lastTime >= 1.0) { // If last prinf() was more than 1sec ago
-											 // printf and reset
+											// printf and reset
 			printf("%f ms/frame, %f FPS\n", 1000.0 /double(nbFrames), double(nbFrames));
 			nbFrames = 0;
 			lastTime += 1.0;

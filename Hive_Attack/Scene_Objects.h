@@ -10,7 +10,7 @@
 #include<map>
 #include<iostream>
 
-#include<Draw_Object.h>
+#include<Render_Manager.h>
 #include<Ship_Array.h>
 
 using namespace std;
@@ -225,8 +225,6 @@ class Hive_Pod_Object
 public:
 	Hive_Pod_Object()
 	{
-		base_octohedron = new Octohedron_Model;
-		base_octohedron->init_base_octohedron();
 	}
 
 	Ship_Object* hive_ship_pointer = NULL;
@@ -285,7 +283,7 @@ public:
 
 	Hive_Ship_Array hive_ship_array;
 	
-	Hive_Pod_Object Hive_Pod_Array[1000];
+	Hive_Pod_Object Hive_Pod_Array[MAX_NUM_HIVE_PODS_PER_HIVE];
 	int num_current_hive_pods = 0;
 	int max_list_pointer = 1;
 
@@ -293,15 +291,6 @@ public:
 	bool hive_is_engaged = false;
 
 	map<Grid_Coord, Hive_Pod_Object*> Pod_Grid_Map;
-
-	// Vertices for the Octohedron Array
-	std::vector<glm::vec3> vertices;
-	std::vector<glm::vec2> uvs;
-	std::vector<glm::vec3> normals;
-	std::vector<glm::vec3> indexed_vertices;
-	std::vector<glm::vec2> indexed_uvs;
-	std::vector<glm::vec3> indexed_normals;
-	std::vector<unsigned short> indices;
 
 	vec3 hive_translation_vector;
 
@@ -311,11 +300,9 @@ public:
 
 	vec3 Hive_Color = { 1.0,1.0,1.0 };
 
-	model_buffer_specs loaded_specs;
-
 	bool check_engagement_target_fleet_destroyed();
 
-	void Init_Hive_Object(vec3 initial_location, vec3 Hive_Color, float ship_damage);
+	void Init_Hive_Object(vec3 initial_location, vec3 Hive_Color, float ship_damage, model_buffer_specs* hive_pod_model, model_buffer_specs* hive_ship_model);
 
 	void update_translation_matrix();
 
@@ -327,13 +314,9 @@ public:
 
 	void Manage_Obscurity(Hive_Pod_Object* octo);
 
-	void update_model_vertices();
-
 	void update_ship_arrays();
 
 	void update_pod_array();
-
-	void load_buffer_return_specs();
 
 	vec3 return_hive_color();
 
@@ -343,7 +326,7 @@ public:
 
 	Hive_Pod_Object* return_random_active_pod();
 
-	model_buffer_specs* return_loaded_hive_specs();
+	model_buffer_specs* return_loaded_hive_pod_model();
 
 	void register_new_hive_pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
 
@@ -371,9 +354,8 @@ public:
 
 	void set_engaged(bool engaged);
 
-
-
 private:
+	model_buffer_specs * hive_pod_model = NULL;
 	mat4 hive_pod_model_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
 	void set_hive_ship_array_engagement_targets();
 

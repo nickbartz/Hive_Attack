@@ -1,4 +1,4 @@
-#include<Scene_Graph.h>
+#include<Gameplay_Manager.h>
 #include<Scene_Objects.h>
 #include<vector>
 
@@ -23,7 +23,7 @@
 #include<texture.hpp>
 #include<vboindexer.hpp>
 #include<objloader.hpp>
-#include<Draw_Object.h>
+#include<Render_Manager.h>
 #include<Ship_Array.h>
 
 using namespace std;
@@ -217,6 +217,9 @@ bool Octohedron_Model::check_for_total_obscurity()
 
 void Hive_Pod_Object::Init_Hive_Pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset)
 {
+	base_octohedron = new Octohedron_Model;
+	base_octohedron->init_base_octohedron();
+
 	octohedron_coordinates = base_grid_coords + face_grid_offset;
 
 	update_translation(local_translation, world_translation);
@@ -307,10 +310,8 @@ Hive_Object::Hive_Object()
 
 }
 
-void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, float hive_damage)
+void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, float hive_damage, model_buffer_specs* _hive_pod_model, model_buffer_specs* hive_ship_model)
 {
-	cout << "Creating New Hive Object" << endl;
-
 	glm::quat MyQuaternion;
 	glm::vec3 EulerAngles({ 0.0f,0.0f,0.0f });
 	MyQuaternion = glm::quat(EulerAngles);
@@ -318,13 +319,13 @@ void Hive_Object::Init_Hive_Object(vec3 initial_location, vec3 _Hive_Color, floa
 
 	Hive_Color = _Hive_Color;
 
-	hive_ship_array.init_hive_ship_array(Hive_Color, hive_damage);
+	hive_ship_array.init_hive_ship_array(Hive_Color, hive_damage, hive_ship_model);
 
 	hive_translation_vector = initial_location;
 
 	register_new_hive_pod({ 0.0,0.0,0.0 }, hive_translation_vector, { 0,0,0 }, { 0,0,0 });
 
-	update_model_vertices();
+	hive_pod_model = _hive_pod_model;
 }
 
 bool Hive_Object::check_engagement_target_fleet_destroyed()
@@ -335,8 +336,6 @@ bool Hive_Object::check_engagement_target_fleet_destroyed()
 
 void Hive_Object::extrude_new_octo()
 {
-	cout << "Extruding Hive Pod" << endl;
-
 	int array_index = 0;
 	bool square_found = false;
 	int face_num = 0;
@@ -354,7 +353,8 @@ void Hive_Object::extrude_new_octo()
 		{
 			/*if (rand() % 2 == 0) extrude_from_square(array_index);
 			else 
-			*/extrude_from_hexagon(array_index);
+			*/
+			extrude_from_hexagon(array_index);
 			return;
 		}
 
@@ -421,11 +421,6 @@ bool Hive_Object::is_fleet_destroyed()
 {
 	if (hive_ship_array.return_num_ships_in_swarm() == 0) return true;
 	else return false;
-}
-
-void Hive_Object::load_buffer_return_specs()
-{
-	loaded_specs = create_object_buffers(indexed_vertices, indexed_uvs, indexed_normals, indices);
 }
 
 void Hive_Object::Manage_Obscurity(Hive_Pod_Object* octo)
@@ -531,9 +526,9 @@ mat4 Hive_Object::return_model_matrix()
 	return TranslationMatrix*RotationMatrix*ScaleMatrix;
 }
 
-model_buffer_specs* Hive_Object::return_loaded_hive_specs()
+model_buffer_specs* Hive_Object::return_loaded_hive_pod_model()
 {
-	return &loaded_specs;
+	return hive_pod_model;
 }
 
 mat4 * Hive_Object::return_hive_pods_model_matrices()
@@ -608,25 +603,6 @@ void Hive_Object::update_hive_pod_model_matrices()
 			hive_pod_index++;
 		}
 	}
-}
-
-void Hive_Object::update_model_vertices()
-{
-	vertices.clear();
-	uvs.clear();
-	normals.clear();
-
-	for (int i = 0; i < num_current_hive_pods; i++)
-	{
-		if (Hive_Pod_Array[i].is_active()) Hive_Pod_Array[i].return_octohedron_base()->add_triangle_array_components(vertices, uvs, normals);
-	}
-
-	indexed_vertices.clear();
-	indexed_uvs.clear();
-	indexed_normals.clear();
-	indices.clear();
-
-	indexVBO(vertices, uvs, normals, indices, indexed_vertices, indexed_uvs, indexed_normals);
 }
 
 void Hive_Object::update_ship_arrays()
