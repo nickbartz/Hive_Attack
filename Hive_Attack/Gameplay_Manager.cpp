@@ -37,7 +37,7 @@ void Gameplay_Manager::Init(Service_Locator* _service_locator)
 
 	Hive_Object_Array.push_back(new Hive_Object);
 	Hive_Object_Array[0]->Init_Hive_Object(service_locator, { 0.0,0.0,0.0 }, { 0.75,0.75,0.0 }, 0.02, &hive_pod, &simple_ship);
-	for (int i = 0; i < 10; i++) Hive_Object_Array[0]->extrude_new_octo();
+	for (int i = 0; i < 10; i++) Hive_Object_Array[0]->extrude_new_octo({ 0.75,0.75,0.0 });
 	//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array[0]->hive_ship_array);
 
 	for (int i = 1; i < 10; i++)
@@ -52,7 +52,7 @@ void Gameplay_Manager::Init(Service_Locator* _service_locator)
 		Hive_Object_Array.push_back(new Hive_Object);
 
 		Hive_Object_Array.back()->Init_Hive_Object(service_locator, { 10.0*rand_x*i,0.0,10.0*rand_z*i }, { rgb_r,rgb_g,rgb_b }, 0.02, &hive_pod, &simple_ship);
-		for (int p = 0; p < 3 + i; p++) Hive_Object_Array.back()->extrude_new_octo();
+		for (int p = 0; p < 3 + i; p++) Hive_Object_Array.back()->extrude_new_octo({ rgb_r,rgb_g,rgb_b });
 		//Add_Hive_Ship_Array_To_Manifest(&Hive_Object_Array.back()->hive_ship_array);
 	}
 }
@@ -90,7 +90,9 @@ void Gameplay_Manager::Draw_Hive(GLFWwindow* window, int shader_program, glm::ve
 
 	mat4* hive_pod_model_matrices = hive_pointer->return_hive_pods_model_matrices();
 
-	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices);
+	vec3* hive_pod_color_matrices = hive_pointer->return_hive_pods_color_matrices();
+
+	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *hive_model_type, hive_pointer->return_num_current_pods(), hive_pod_array_color, hive_pod_model_matrices, hive_pod_color_matrices);
 }
 
 void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, int shader_program, glm::vec3 lightPos, Hive_Ship_Array* ship_array_pointer)
@@ -100,14 +102,20 @@ void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, int shader_progr
 
 	mat4* ship_model_matrices = ship_array_pointer->return_ships_model_matrices();
 
-	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_model_matrices);
+	vec3* hive_pod_color_matrices = ship_array_pointer->return_ships_color_matrices();
+
+	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, *ship_model_type, ship_array_pointer->return_num_ships_in_swarm(), ship_array_color, ship_model_matrices, hive_pod_color_matrices);
 }
 
 void Gameplay_Manager::Draw_Projectiles(GLFWwindow* window, int shader_program)
 {
 	vec3 ship_array_color = { 1.0f,1.0f,1.0f };
 
-	service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, simple_projectile, projectile_array.size(), ship_array_color, projectile_model_matrices);
+	if (projectile_array.size() > 0)
+	{
+		service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, simple_projectile, projectile_array.size(), ship_array_color, projectile_model_matrices, NULL);
+	}
+
 }
 
 void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)

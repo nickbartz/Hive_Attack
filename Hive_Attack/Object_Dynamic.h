@@ -122,8 +122,6 @@ public:
 
 	float calculate_distance_from_orbit_location();
 
-	float calculate_distance_between_two_points(float x1, float z1, float x2, float z2);
-
 	glm::vec3 return_closest_orbit_entry_point();
 
 	void calculate_needed_rotation_increment_from_goal(glm::vec3 goal_position);
@@ -132,15 +130,16 @@ public:
 
 	void check_nearby_targets();
 
-	// HIVE SHIP FOCUS
-	void set_engagement_target(Ship_Object* ship_object);
-	void remove_engagement_target();
-	Ship_Object* return_current_engagement_target();
-
 	// HIVE POD FOCUS
 	void set_hive_pod_plunder_target(Hive_Pod_Object* hive_pod);
 	void remove_hive_pod_plunder_target();
 	Hive_Pod_Object* return_current_hive_pod_target();
+	bool is_carrying_pod();
+	void set_is_carrying_pod(bool carrying);
+
+	void set_ship_focus(Ship_Object* ship_focus);
+	void remove_ship_focus();
+	Ship_Object* return_ship_focus();
 
 	void Reduce_Ship_Health(float health_decrement);
 
@@ -153,6 +152,9 @@ public:
 	void add_engaged_ship(Ship_Object* ship_object);
 
 	void remove_engaged_ship(Ship_Object * ship_object);
+
+	int return_ship_direction();
+	void set_ship_direction(int direction);
 
 	float return_ship_fire_cooldown();
 	void set_ship_fire_cooldown(float ship_fire_cooldown);
@@ -171,8 +173,9 @@ public:
 private:
 	Service_Locator * service_locator;
 
-	Ship_Object * current_engagement_focus = NULL;
 	Hive_Pod_Object* current_hive_pod_focus = NULL;
+	Ship_Object* current_ship_focus = NULL;
+
 	vector<Ship_Object*> ships_engaging;
 	int major_array_id = 0;
 	int ship_current_state = SHIP_STATE_IDLE;
@@ -183,6 +186,7 @@ private:
 
 	float ship_fire_cooldown = 0.0;
 
+	bool ship_is_carrying_pod = false;
 	int num_plundered_pods = 0;
 
 };
@@ -218,16 +222,19 @@ public:
 
 	void set_ship_array_damage(float damage);
 	float return_ship_array_damage();
-	Ship_Object* find_ship_engagement_target();
+	Hive_Pod_Object* find_hive_pod_engagement_focus();
 	void send_ships_to_collect_enemy_hive_pods(Hive_Object* destroyed_hive);
 	void update_ships();
 
 	mat4* return_ships_model_matrices();
+	void update_ships_color_matrices();
+	vec3* return_ships_color_matrices();
 
 	int return_num_ships_in_swarm();
-	void increment_num_pods_to_add_to_hive(int increment);
+	void increment_num_pods_to_add_to_hive(vec3 hive_color); // GOOD LORD THIS IS TEMPORARY
 	void decrement_num_pods_to_add_to_hive(int decrement);
 	int return_num_pods_to_add_to_hive();
+	vector<vec3>* return_pods_to_add_to_hive();
 
 private:
 	Service_Locator * service_locator;
@@ -243,13 +250,14 @@ private:
 	int num_ships_in_swarm = 0;
 	int max_list_pointer = 1;
 
-	int num_pods_to_add_to_hive = 0;
+	vector<vec3> pods_to_add_to_hive;
 
 	vec3 ship_array_color = { 0.75,0.75,0.0 };
 	float ship_array_damage = 0.5;
 
 	model_buffer_specs* loaded_ship_specs;
 	mat4 ship_model_matrices[MAX_SHIPS_PER_HIVE];
+	vec3 ship_color_matrices[MAX_SHIPS_PER_HIVE];
 };
 
 class Hive_Ship_Array_Manifest

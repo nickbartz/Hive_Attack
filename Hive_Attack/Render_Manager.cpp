@@ -90,6 +90,12 @@ model_buffer_specs Render_Manager::create_object_buffers(vector<glm::vec3> &inde
 		glVertexAttribDivisor(3 + i, 1);
 	}
 
+	GLuint colorbuffer;
+	glGenBuffers(1, &colorbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+	glVertexAttribPointer(7, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glVertexAttribDivisor(7, 1);
+
 	GLuint elementbuffer;
 	glGenBuffers(1, &elementbuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
@@ -109,6 +115,7 @@ model_buffer_specs Render_Manager::create_object_buffers(vector<glm::vec3> &inde
 	new_model.elementbuffer = elementbuffer;
 	new_model.num_indices = indices.size();
 	new_model.model_matrix_instance_buffer = model_matrix_instance_buffer;
+	new_model.color_buffer = colorbuffer;
 
 	return new_model;
 }
@@ -148,7 +155,7 @@ void Render_Manager::Draw_Object(GLFWwindow* window, int shader_program, model_b
 	glDisableVertexAttribArray(2);
 }
 
-void Render_Manager::Draw_Instanced_Object(GLFWwindow* window, int shader_program, vec3 lightPos, model_buffer_specs model_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices)
+void Render_Manager::Draw_Instanced_Object(GLFWwindow* window, int shader_program, vec3 lightPos, model_buffer_specs model_specs, int num_items_to_render, vec3 Base_Color, mat4* instance_model_matrices, vec3* instance_model_colors)
 {
 	// Use our shader
 	glUseProgram(shaders[shader_program]);
@@ -159,7 +166,10 @@ void Render_Manager::Draw_Instanced_Object(GLFWwindow* window, int shader_progra
 	glm::mat4 ViewMatrix = getViewMatrix();
 
 	glBindBuffer(GL_ARRAY_BUFFER, model_specs.model_matrix_instance_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * num_items_to_render, swarm_model_matrices, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(mat4) * num_items_to_render, instance_model_matrices, GL_DYNAMIC_DRAW);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, model_specs.color_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * num_items_to_render, instance_model_colors, GL_DYNAMIC_DRAW);
 
 	glUniformMatrix4fv(ViewMatrixID_Instance, 1, GL_FALSE, &ViewMatrix[0][0]);
 	glUniformMatrix4fv(ProjectionMatrixID_Instance, 1, GL_FALSE, &ProjectionMatrix[0][0]);
@@ -177,6 +187,7 @@ void Render_Manager::Draw_Instanced_Object(GLFWwindow* window, int shader_progra
 	glEnableVertexAttribArray(4);
 	glEnableVertexAttribArray(5);
 	glEnableVertexAttribArray(6);
+	glEnableVertexAttribArray(7);
 
 	glDrawElementsInstanced(GL_TRIANGLES, model_specs.num_indices, GL_UNSIGNED_SHORT, 0 , num_items_to_render);
 	
@@ -187,6 +198,7 @@ void Render_Manager::Draw_Instanced_Object(GLFWwindow* window, int shader_progra
 	glDisableVertexAttribArray(4);
 	glDisableVertexAttribArray(5);
 	glDisableVertexAttribArray(6);
+	glDisableVertexAttribArray(7);
 }
 
 void Render_Manager::Cleanup_Object(model_buffer_specs* model_specs)

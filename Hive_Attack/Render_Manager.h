@@ -26,6 +26,7 @@ struct model_buffer_specs
 	GLuint normalbuffer;
 	GLuint elementbuffer;
 	GLuint model_matrix_instance_buffer;
+	GLuint color_buffer;
 	unsigned int num_indices = 0;
 
 	void print()
@@ -54,7 +55,7 @@ public:
 
 	void Draw_Object(GLFWwindow* window, int shader_type, model_buffer_specs model_specs, glm::vec3 lightPos, glm::mat4 model_matrix, glm::vec3 Base_Color);
 
-	void Draw_Instanced_Object(GLFWwindow * window, int shader_type, glm::vec3 lightPos, model_buffer_specs model_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices);
+	void Draw_Instanced_Object(GLFWwindow * window, int shader_type, glm::vec3 lightPos, model_buffer_specs model_specs, int num_items_to_render, vec3 Base_Color, mat4* swarm_model_matrices, vec3* swarm_color_matrices);
 
 	void printText2D(const char * text, int x, int y, int size);
 
@@ -108,6 +109,7 @@ private:
 	float verticalAngle = -0.6f;
 
 	double currentTime;
+	
 	float deltaTime;
 
 	GLuint Texture;

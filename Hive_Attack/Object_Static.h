@@ -227,7 +227,7 @@ public:
 	{
 	}
 
-	Ship_Object* hive_ship_pointer = NULL;
+
 	Grid_Coord octohedron_coordinates;
 	Octohedron_Model* base_octohedron;
 
@@ -238,13 +238,17 @@ public:
 
 	int index_hash = rand() % 100000;
 
-	void Init_Hive_Pod(Service_Locator* service_locator, glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
+	void Init_Hive_Pod(Service_Locator* service_locator, glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset, vec3 pod_color);
 
 	vec3 return_local_translation_vector();
 
 	vec3 return_world_translation_vector();
 
 	vec3 return_scaled_translation_vector();
+
+	Ship_Object* return_hive_ship_pointer();
+
+	void set_hive_ship_pointer(Ship_Object* ship_object);
 
 	Octohedron_Model* return_octohedron_base();
 
@@ -262,20 +266,33 @@ public:
 
 	void set_major_array_id(int array_id);
 
+	void set_pod_is_being_plundered(bool is_being_plundered);
+
+	void set_pod_color(vec3 pod_color);
+
+	vec3 return_pod_color();
+
 	int return_major_array_id();
 
 	mat4 return_current_model_matrix();
 
+	bool return_pod_is_being_plundered();
+
 private:
 	Service_Locator * service_locator;
+	Ship_Object* hive_ship_pointer = NULL;
 
 	bool pod_is_active = false;
 	int major_array_id = 0;
 	float hive_pod_health = 100.0f;
 
+	bool pod_is_being_plundered = false;
+
 	mat4 ScaleMatrix = glm::mat4(1.0);;
 	mat4 Transform_Matrix = translate(vec3{0.0f,0.0f,0.0f});
 	mat4 RotationMatrix = glm::mat4(1.0);
+
+	vec3 pod_color = { 1.0f,1.0f,1.0f };
 };
 
 class Hive_Object
@@ -308,11 +325,11 @@ public:
 
 	void update_translation_matrix();
 
-	void extrude_new_octo();
+	void extrude_new_octo(vec3 octo_color);
 
-	void extrude_from_square(int array_index);
+	void extrude_from_square(int array_index, vec3 octo_color);
 
-	void extrude_from_hexagon(int array_index);
+	void extrude_from_hexagon(int array_index, vec3 octo_color);
 
 	void Manage_Obscurity(Hive_Pod_Object* octo);
 
@@ -330,7 +347,7 @@ public:
 
 	model_buffer_specs* return_loaded_hive_pod_model();
 
-	void register_new_hive_pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset);
+	void register_new_hive_pod(vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset, vec3 hive_pod_color);
 
 	void remove_hive_pod(Hive_Pod_Object* hive_pod);
 
@@ -338,9 +355,9 @@ public:
 
 	mat4 return_model_matrix();
 
-	void update_hive_pod_model_matrices();
-
 	mat4* return_hive_pods_model_matrices();
+
+	vec3 * return_hive_pods_color_matrices();
 
 	Hive_Object* return_hive_engagement_target();
 
@@ -356,6 +373,10 @@ public:
 
 	void set_engaged(bool engaged);
 
+	void update_hive_pod_model_matrices();
+
+	void update_hive_pod_color_matrix();
+
 	void update();
 
 private:
@@ -363,7 +384,7 @@ private:
 
 	model_buffer_specs * hive_pod_model = NULL;
 	mat4 hive_pod_model_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
-
+	vec3 hive_pod_color_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
 
 
 };

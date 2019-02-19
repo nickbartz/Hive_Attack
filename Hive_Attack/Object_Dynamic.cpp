@@ -107,24 +107,14 @@ void Ship_Object::add_engaged_ship(Ship_Object * ship_object)
 
 float Ship_Object::calculate_distance_from_orbit_location()
 {
-	float px = current_transform_vector.x;
-	float pz = current_transform_vector.z;
-	float cx = orbit_location.x;
-	float cz = orbit_location.z;
+	//float px = current_transform_vector.x;
+	//float pz = current_transform_vector.z;
+	//float cx = orbit_location.x;
+	//float cz = orbit_location.z;
 
-	float dx = abs(cx - px);
-	float dz = abs(cz - pz);
-	return sqrt(dx * dx + dz * dz);
-}
-
-float Ship_Object::calculate_distance_between_two_points(float x1, float z1, float x2, float z2)
-{
-	float dx = abs(x2 - x1);
-	float dz = abs(z2 - z1);
-
-	float dd = sqrt(dx * dx + dz * dz);
-
-	return dd;
+	//float dx = abs(cx - px);
+	//float dz = abs(cz - pz);
+	return distance(current_transform_vector, orbit_location);
 }
 
 float Ship_Object::calculate_damage_from_engaging_ships()
@@ -135,9 +125,9 @@ float Ship_Object::calculate_damage_from_engaging_ships()
 		vec3 ship_pos = return_current_transform_vector();
 		vec3 engaging_ship_pos = ships_engaging[i]->return_current_transform_vector();
 
-		float distance = calculate_distance_between_two_points(ship_pos.x, ship_pos.z, engaging_ship_pos.x, engaging_ship_pos.z);
+		float target_distance = distance(ship_pos, engaging_ship_pos);
 
-		int int_distance = distance > 1 ? distance : 1;
+		int int_distance = target_distance > 1 ? target_distance : 1;
 
 		int hit_chance = rand() % int_distance;
 
@@ -374,18 +364,6 @@ vec3 Ship_Object::return_closest_orbit_entry_point()
 
 }
 
-void Ship_Object::remove_engagement_target()
-{
-	current_engagement_focus->remove_engaged_ship(this);
-	orbit_location = home_orbit_location;
-	current_engagement_focus = NULL;
-}
-
-Ship_Object* Ship_Object::return_current_engagement_target()
-{
-	return current_engagement_focus;
-}
-
 void Ship_Object::remove_hive_pod_plunder_target()
 {
 	current_hive_pod_focus = NULL;
@@ -397,6 +375,16 @@ void Ship_Object::remove_engaged_ship(Ship_Object* ship_object)
 	{
 		if (ships_engaging[i] == ship_object) ships_engaging.erase(ships_engaging.begin() + i);
 	}
+}
+
+int Ship_Object::return_ship_direction()
+{
+	return direction;
+}
+
+void Ship_Object::set_ship_direction(int _direction)
+{
+	direction = _direction;
 }
 
 float Ship_Object::return_ship_fire_cooldown()
@@ -424,6 +412,39 @@ float Ship_Object::return_ship_damage()
 Hive_Pod_Object * Ship_Object::return_current_hive_pod_target()
 {
 	return current_hive_pod_focus;
+}
+
+bool Ship_Object::is_carrying_pod()
+{
+	return ship_is_carrying_pod;
+}
+
+void Ship_Object::set_is_carrying_pod(bool carrying)
+{
+	ship_is_carrying_pod = carrying;
+}
+
+void Ship_Object::set_ship_focus(Ship_Object * ship_focus)
+{
+	current_ship_focus = ship_focus;
+
+	if (current_ship_focus != NULL)
+	{
+		if (current_ship_focus->return_ship_direction() == 1) set_ship_direction(1);
+		else set_ship_direction(0);
+
+		ship_focus->add_engaged_ship(this);
+	}
+}
+
+void Ship_Object::remove_ship_focus()
+{
+	current_ship_focus = NULL;
+}
+
+Ship_Object * Ship_Object::return_ship_focus()
+{
+	return current_ship_focus;
 }
 
 void Ship_Object::Reduce_Ship_Health(float health_decrement)
@@ -479,21 +500,13 @@ void Ship_Object::set_ship_damage(float _ship_damage)
 	ship_damage = _ship_damage;
 }
 
-void Ship_Object::set_engagement_target(Ship_Object* ship_object)
-{
-	if (ship_object != NULL)
-	{
-		current_engagement_focus = ship_object;
-		ship_object->add_engaged_ship(this);
-		orbit_location = current_engagement_focus->return_current_transform_vector();
-		if (current_engagement_focus->direction == 0) direction = 0;
-		else direction = 1;
-	}
-}
-
 void Ship_Object::set_hive_pod_plunder_target(Hive_Pod_Object * hive_pod)
 {
-	current_hive_pod_focus = hive_pod;
+	if (hive_pod != NULL)
+	{
+		current_hive_pod_focus = hive_pod;
+		hive_pod->set_pod_is_being_plundered(true);
+	}
 }
 
 void Ship_Object::update_rotation_matrix(glm::vec3 euler_rotation_vector)
@@ -593,16 +606,17 @@ Ship_Object* Hive_Ship_Array::add_ship_to_array(vec3 current_location, vec3 orbi
 			Ship_Object_Array[i].set_active(true);
 			if (i + 1 == max_list_pointer) max_list_pointer++;
 			num_ships_in_swarm++;
+			update_ships_color_matrices();
 			return &Ship_Object_Array[i];
 		}
 	}
 }
 
-Ship_Object * Hive_Ship_Array::find_ship_engagement_target()
+Hive_Pod_Object * Hive_Ship_Array::find_hive_pod_engagement_focus()
 {
-	if (ship_array_engagement_target != NULL)
+	if (hive_engagement_target != NULL)
 	{
-		Ship_Object* target = ship_array_engagement_target->return_ship_in_array(rand() % ship_array_engagement_target->array_end());
+		Hive_Pod_Object* target = hive_engagement_target->return_random_active_pod();
 		if (target != NULL)
 		{
 			return target;
@@ -641,6 +655,8 @@ void Hive_Ship_Array::remove_ship_from_array(Ship_Object* ship)
 			break;
 		}
 	}
+
+	update_ships_color_matrices();
 }
 
 Ship_Object* Hive_Ship_Array::return_ship_in_array(int index)
@@ -686,24 +702,52 @@ mat4* Hive_Ship_Array::return_ships_model_matrices()
 	return ship_model_matrices;
 }
 
+void Hive_Ship_Array::update_ships_color_matrices()
+{
+	int ship_index = 0;
+
+	for (int i = 0; i < max_list_pointer; i++)
+	{
+		Ship_Object* new_ship = return_ship_in_array(i);
+		if (new_ship != NULL && new_ship->is_active())
+		{
+			ship_color_matrices[ship_index] = ship_array_color;
+			ship_index++;
+		}
+	}
+}
+
+vec3 * Hive_Ship_Array::return_ships_color_matrices()
+{
+	return ship_color_matrices;
+}
+
 int Hive_Ship_Array::return_num_ships_in_swarm()
 {
 	return num_ships_in_swarm;
 }
 
-void Hive_Ship_Array::increment_num_pods_to_add_to_hive(int increment)
+void Hive_Ship_Array::increment_num_pods_to_add_to_hive(vec3 pod_color)
 {
-	num_pods_to_add_to_hive += increment;
+	pods_to_add_to_hive.push_back(pod_color);
 }
 
 void Hive_Ship_Array::decrement_num_pods_to_add_to_hive(int decrement)
 {
-	num_pods_to_add_to_hive -= decrement;
+	for (int i = 0; i < decrement; i++)
+	{
+		pods_to_add_to_hive.pop_back();
+	}
 }
 
 int Hive_Ship_Array::return_num_pods_to_add_to_hive()
 {
-	return num_pods_to_add_to_hive;
+	return pods_to_add_to_hive.size();
+}
+
+vector<vec3>* Hive_Ship_Array::return_pods_to_add_to_hive()
+{
+	return &pods_to_add_to_hive;
 }
 
 Hive_Ship_Array* Hive_Ship_Array::return_engaged_ship_array()
@@ -754,96 +798,111 @@ void Hive_Ship_Array::update_ships()
 
 		if (ship != NULL)
 		{
-			if (return_hive_array_state() == SWARM_STATE_IDLE)
+			switch (return_hive_array_state())
 			{
+			case SWARM_STATE_IDLE:
 				ship->set_new_orbit(ship->return_home_orbit());
 				ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
 
-				if (ship->return_num_plundered_pods() > 0)
-				{
-					increment_num_pods_to_add_to_hive(ship->return_num_plundered_pods());
-
-					ship->decrement_num_plundered_pods(ship->return_num_plundered_pods());
-				}
-
-			}
-			else if (return_hive_array_state() == SWARM_STATE_ENGAGED)
-			{
-				// IF THE SHIP IS CURRENTLY NOT ENGAGED, FIND AND ENGAGEMENT TARGET
+				break;
+			case SWARM_STATE_ENGAGED:
+				// IF THE SHIP IS CURRENTLY NOT ENGAGED, FIND AN ENGAGEMENT TARGET
 				if (ship->return_current_state() == Ship_Object::SHIP_STATE_IDLE)
 				{
-					Ship_Object* engaged_ship = find_ship_engagement_target();
+					Hive_Pod_Object* engaged_pod = find_hive_pod_engagement_focus();
+					Ship_Object* ship_defending_pod = NULL;
 
-					if (engaged_ship != NULL)
+					if (engaged_pod != NULL) ship_defending_pod = engaged_pod->return_hive_ship_pointer();
+
+					if (ship_defending_pod != NULL && ship_defending_pod->is_active())
 					{
+						ship->set_ship_focus(ship_defending_pod);
+
 						// SET THE SHIP'S ENGAGEMENT TARGET TO THE FOUND SHIP
 						ship->set_current_state(Ship_Object::SHIP_STATE_ENGAGED);
-						ship->set_engagement_target(engaged_ship);
 
 						//IF THE NEW ENGAGEMENT TARGET ISN'T ALREADY ENGAGED, RECIPROCALLY ENGAGE IT 
-						if (engaged_ship->return_current_state() == Ship_Object::SHIP_STATE_IDLE)
+						if (ship_defending_pod->return_current_state() == Ship_Object::SHIP_STATE_IDLE)
 						{
-							engaged_ship->set_current_state(Ship_Object::SHIP_STATE_ENGAGED);
-							engaged_ship->set_engagement_target(ship);
+							ship_defending_pod->set_ship_focus(ship);
+							ship_defending_pod->set_current_state(Ship_Object::SHIP_STATE_ENGAGED);
 						}
 					}
 				}
 				// IF THE SHIP IS ENGAGED, BUT ITS ENGAGEMENT IS NO LONGER AROUND
-				else if (ship->return_current_state() == Ship_Object::SHIP_STATE_ENGAGED && (ship->return_current_engagement_target() == NULL || ship->return_current_engagement_target()->get_health() <= 0.0))
+				else if (ship->return_current_state() == Ship_Object::SHIP_STATE_ENGAGED && (ship->return_ship_focus() == NULL || ship->return_ship_focus()->get_health() <= 0.0))
 				{
-					ship->remove_engagement_target();
+					ship->remove_ship_focus();
 					ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
 					ship->set_new_orbit(ship->return_home_orbit());
 				}
-			}
-			// MANAGE PLUNDER STATE
-			else if (return_hive_array_state() == SWARM_STATE_PLUNDERING)
-			{
-				if (hive_engagement_target->return_num_current_pods() <= 0) set_ship_array_to_idle();
+				break;
+			case SWARM_STATE_PLUNDERING:
+				if (hive_engagement_target != NULL && hive_engagement_target->return_num_current_pods() <= 0) set_ship_array_to_idle();
 				else if (hive_engagement_target != NULL && hive_engagement_target->return_num_current_pods() > 0)
 				{
 					if (ship->return_current_hive_pod_target() == NULL)
 					{
 						Hive_Pod_Object* pod_to_plunder = hive_engagement_target->return_random_active_pod();
 
-						if (pod_to_plunder != NULL)
+						if (pod_to_plunder != NULL && pod_to_plunder->return_pod_is_being_plundered() == false)
 						{
+							cout << ship << " is getting a new pod" << endl;
 							ship->set_new_orbit(pod_to_plunder->return_world_translation_vector());
 
 							ship->set_hive_pod_plunder_target(pod_to_plunder);
 
 							ship->set_current_state(Ship_Object::SHIP_STATE_PLUNDERING);
+						} 
+						else
+						{
+							ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
 						}
 					}
 					else if (ship->return_current_hive_pod_target() != NULL)
 					{
-						if (ship->return_current_hive_pod_target()->return_hive_pod_health() > 0.0f)
-						{
-							// NEED TO UPDATE THIS FUNCTION TO MIRROR THE WAY IN WHICH SHIPS TAKE DAMAGE
-							ship->return_current_hive_pod_target()->take_damage(ship->return_ship_damage());
+						vec3 ship_transform = ship->return_current_transform_vector();
+						vec3 hive_pod_transform = ship->return_current_hive_pod_target()->return_world_translation_vector();
 
-							if (ship->return_current_hive_pod_target()->return_hive_pod_health() <= 0.0f) ship->increment_num_plundered_pods(1);
-						}
-						else if (ship->return_current_hive_pod_target()->return_hive_pod_health() <= 0.0f)
+						float target_distance = distance(ship_transform, hive_pod_transform);
+
+						if (ship->is_carrying_pod() == false && target_distance < ship->orbit_distance + 1)
 						{
-							ship->remove_hive_pod_plunder_target();
+							ship->set_is_carrying_pod(true);
+							ship->set_new_orbit(ship->return_home_orbit());
+						}
+						else if (ship->is_carrying_pod() == true)
+						{
+							ship->return_current_hive_pod_target()->update_translation({ 0.0f,0.0f,0.0f }, ship->return_current_transform_vector());
+
+							hive_engagement_target->update_hive_pod_model_matrices();
+
+							if (distance(ship->return_current_transform_vector(), ship->return_home_orbit()) < ship->orbit_distance + 1)
+							{
+								increment_num_pods_to_add_to_hive(ship->return_current_hive_pod_target()->return_pod_color());
+								hive_engagement_target->remove_hive_pod(ship->return_current_hive_pod_target());
+								ship->remove_hive_pod_plunder_target();
+								ship->set_is_carrying_pod(false);
+								ship->set_current_state(Ship_Object::SHIP_STATE_IDLE);
+							}
 						}
 					}
 				}
+				break;
 			}
 
 			ship->process_ship_damage();
 
-			if (return_hive_array_state() == SWARM_STATE_ENGAGED && ship->return_current_engagement_target() != NULL)
+			if (return_hive_array_state() == SWARM_STATE_ENGAGED && ship->return_ship_focus() != NULL)
 			{
-				if (ship->return_ship_fire_cooldown() == 0.0)
+				if (ship->return_ship_fire_cooldown() == 0.0 && distance(ship->current_transform_vector, ship->return_ship_focus()->current_transform_vector) < 2*ship->orbit_distance)
 				{
-					service_locator->return_gameplay_manager()->Create_New_Projectile(ship->current_transform_vector, ship->return_current_engagement_target()->current_transform_vector);
+					service_locator->return_gameplay_manager()->Create_New_Projectile(ship->current_transform_vector, ship->return_ship_focus()->current_transform_vector);
 					ship->set_ship_fire_cooldown(100.0);
 				}
 				else ship->decrement_ship_fire_cooldown();
 
-				ship->set_new_orbit(ship->return_current_engagement_target()->current_transform_vector);
+				ship->set_new_orbit(ship->return_ship_focus()->current_transform_vector);
 			}
 
 			ship->move();
