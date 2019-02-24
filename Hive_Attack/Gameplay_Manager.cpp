@@ -76,7 +76,11 @@ void Gameplay_Manager::draw_scene_graph(GLFWwindow* window)
 	{
 		Draw_Hive(window, SHADER_INSTANCE, lightPos, Hive_Object_Array[i]);
 
-		Draw_Hive_Ship_Array(window, SHADER_INSTANCE, lightPos, Hive_Object_Array[i]->return_hive_ship_array());
+		for (int p = 0; p < Hive_Object_Array[i]->return_num_ship_arrays(); p++)
+		{
+			Draw_Hive_Ship_Array(window, SHADER_INSTANCE, lightPos, Hive_Object_Array[i]->return_ship_array_by_num(p));
+		}
+
 	}
 
 	Draw_Projectiles(window, SHADER_INSTANCE);
@@ -100,7 +104,7 @@ void Gameplay_Manager::Draw_Hive_Ship_Array(GLFWwindow* window, int shader_progr
 	model_buffer_specs* ship_model_type = ship_array_pointer->return_loaded_ship_specs();
 	vec3 ship_array_color = ship_array_pointer->return_ship_array_color();
 
-	mat4* ship_model_matrices = ship_array_pointer->return_ships_model_matrices();
+	mat4* ship_model_matrices = ship_array_pointer->return_model_matrix_array();
 
 	vec3* hive_pod_color_matrices = ship_array_pointer->return_ships_color_matrices();
 
@@ -113,7 +117,7 @@ void Gameplay_Manager::Draw_Projectiles(GLFWwindow* window, int shader_program)
 
 	if (projectile_array.size() > 0)
 	{
-		service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, simple_projectile, projectile_array.size(), ship_array_color, projectile_model_matrices, NULL);
+		service_locator->return_render_manager()->Draw_Instanced_Object(window, shader_program, lightPos, simple_projectile, projectile_array.size(), ship_array_color, projectile_model_matrices, projectile_color_matrices);
 	}
 
 }
@@ -124,11 +128,10 @@ void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)
 	{
 		vec3 hive_translation_vector = Hive_Object_Array[i]->return_hive_translation_vector();
 
-		cout << hive_translation_vector.x << ", " << hive_translation_vector.z << endl;
-
 		if (abs(hive_translation_vector.x - x_pos) < 3.0 && abs(hive_translation_vector.z - y_pos) < 3.0)
 		{
-			Set_Hive_Engagement_Target(Hive_Object_Array[0], Hive_Object_Array[i]);
+			Set_Hive_Swarm_Engagement_Target(Hive_Object_Array[0]->return_ship_array_by_num(0), Hive_Object_Array[i]);
+			Hive_Object_Array[i]->add_attacking_swarm(Hive_Object_Array[0]->return_ship_array_by_num(0));
 			return;
 		}
 	}
@@ -202,6 +205,8 @@ void Gameplay_Manager::Create_New_Projectile(vec3 start_position, vec3 end_posit
 		new_projectile->Init(start_position, end_position);
 
 		projectile_array.push_back(new_projectile);
+
+		Update_Projectile_Color_Matrices();
 	}
 }
 
@@ -219,12 +224,20 @@ void Gameplay_Manager::Update_Projectile_Model_Matrices()
 	}
 }
 
-bool Gameplay_Manager::Set_Hive_Engagement_Target(Hive_Object* hive, Hive_Object* hive_engagement_target)
+void Gameplay_Manager::Update_Projectile_Color_Matrices()
 {
-	hive->set_hive_engagement_target(hive_engagement_target);
-	if (hive_engagement_target->return_hive_engagement_target() == NULL) hive_engagement_target->set_hive_engagement_target(hive);
+	for (int i = 0; i < projectile_array.size(); i++)
+	{
+		projectile_color_matrices[i] = projectile_array[i]->Return_Color();
+	}
+}
 
-	return true;
+void Gameplay_Manager::Set_Hive_Swarm_Engagement_Target(Hive_Ship_Array* swarm, Hive_Object* hive_engagement_target)
+{
+	swarm->set_hive_engagement_target(hive_engagement_target);
+	swarm->set_array_state(Hive_Ship_Array::SWARM_STATE_COMBAT_ENGAGED);
+
+
 }
 
 void Gameplay_Manager::update_scene_graph()

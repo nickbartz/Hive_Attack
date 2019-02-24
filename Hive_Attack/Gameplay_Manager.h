@@ -64,7 +64,11 @@ public:
 
 	void Update_Projectile_Model_Matrices();
 
-	bool Set_Hive_Engagement_Target(Hive_Object * base_hive, Hive_Object* hive_engagement_target);
+	void Update_Projectile_Color_Matrices();
+
+	//bool Set_Hive_Engagement_Target(Hive_Object * base_hive, Hive_Object* hive_engagement_target);
+
+	void Set_Hive_Swarm_Engagement_Target(Hive_Ship_Array* swarm, Hive_Object* hive_engagement_target);
 
 private:
 	Service_Locator * service_locator;
@@ -82,6 +86,7 @@ private:
 	model_buffer_specs simple_projectile;
 
 	mat4 projectile_model_matrices[1000];
+	vec3 projectile_color_matrices[1000];
 };
 
 

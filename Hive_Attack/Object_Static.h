@@ -227,7 +227,6 @@ public:
 	{
 	}
 
-
 	Grid_Coord octohedron_coordinates;
 	Octohedron_Model* base_octohedron;
 
@@ -270,6 +269,10 @@ public:
 
 	void set_pod_color(vec3 pod_color);
 
+	void set_current_matrix_pointer(int array_pointer);
+
+	int return_current_matrix_pointer();
+
 	vec3 return_pod_color();
 
 	int return_major_array_id();
@@ -284,6 +287,7 @@ private:
 
 	bool pod_is_active = false;
 	int major_array_id = 0;
+	int matrices_array_pointer = 0;
 	float hive_pod_health = 100.0f;
 
 	bool pod_is_being_plundered = false;
@@ -300,8 +304,6 @@ class Hive_Object
 public:
 	Hive_Object();
 
-	Hive_Ship_Array hive_ship_array;
-	
 	Hive_Pod_Object Hive_Pod_Array[MAX_NUM_HIVE_PODS_PER_HIVE];
 	int num_current_hive_pods = 0;
 	int max_list_pointer = 1;
@@ -319,9 +321,9 @@ public:
 
 	vec3 Hive_Color = { 1.0,1.0,1.0 };
 
-	bool check_engagement_target_fleet_destroyed();
-
 	void Init_Hive_Object(Service_Locator* service_locator, vec3 initial_location, vec3 Hive_Color, float ship_damage, model_buffer_specs* hive_pod_model, model_buffer_specs* hive_ship_model);
+
+	void add_attacking_swarm(Hive_Ship_Array* attacking_swarm);
 
 	void update_translation_matrix();
 
@@ -332,8 +334,6 @@ public:
 	void extrude_from_hexagon(int array_index, vec3 octo_color);
 
 	void Manage_Obscurity(Hive_Pod_Object* octo);
-
-	void update_ship_arrays();
 
 	void update_pod_array();
 
@@ -363,17 +363,19 @@ public:
 
 	vec3 return_hive_translation_vector();
 
-	Hive_Ship_Array* return_hive_ship_array();
+	int return_num_ship_arrays();
 
-	bool set_hive_engagement_target(Hive_Object* engagement_hive);
+	Hive_Ship_Array* return_ship_array_by_num(int num);
 
-	bool is_engaged();
+	Hive_Ship_Array* return_strongest_defending_ship_array();
 
-	bool is_fleet_destroyed();
+	int return_num_defending_swarms();
 
-	void set_engaged(bool engaged);
+	void update_hive_swarms();
 
-	void update_hive_pod_model_matrices();
+	void update_all_hive_pod_model_matrices();
+
+	void update_single_hive_pod_model_matrix(Hive_Pod_Object* hive_pod);
 
 	void update_hive_pod_color_matrix();
 
@@ -381,6 +383,10 @@ public:
 
 private:
 	Service_Locator * service_locator;
+
+	vector<Hive_Ship_Array> hive_swarm_array;
+
+	vector<Hive_Ship_Array*> attacking_swarms;
 
 	model_buffer_specs * hive_pod_model = NULL;
 	mat4 hive_pod_model_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];

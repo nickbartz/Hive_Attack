@@ -32,6 +32,7 @@ public:
 	void Decrement_Lifespan();
 	int Return_Lifespan();
 	mat4 Return_Model_Matrix();
+	vec3 Return_Color();
 	bool is_init();
 
 private:
@@ -50,6 +51,7 @@ private:
 
 	bool initialized = false;
 
+	vec3 color;
 };
 
 class Ship_Object
@@ -78,8 +80,9 @@ public:
 	enum ship_states
 	{
 		SHIP_STATE_IDLE,
-		SHIP_STATE_ENGAGED,
-		SHIP_STATE_PLUNDERING
+		SHIP_STATE_COMBAT_ENGAGED,
+		SHIP_STATE_MOVING_TO_POD,
+		SHIP_STATE_CARRYING_POD
 	};
 
 	model_buffer_specs loaded_specs;
@@ -111,12 +114,16 @@ public:
 	vec3 return_current_rotation_vector();
 
 	mat4 return_current_model_matrix();
+	void set_matrix_array_id(int array_id);
+	int return_matrix_array_id();
 
 	vec3 return_home_orbit();
 
 	void rotate_directional_vector(float angle);
 
 	void set_new_orbit(glm::vec3 _orbit_location);
+
+	void set_current_orbit_around_ship(Ship_Object* ship);
 
 	void set_home_orbit(vec3 _home_orbit_location);
 
@@ -139,7 +146,7 @@ public:
 
 	void set_ship_focus(Ship_Object* ship_focus);
 	void remove_ship_focus();
-	Ship_Object* return_ship_focus();
+	Ship_Object* return_ship_combat_focus();
 
 	void Reduce_Ship_Health(float health_decrement);
 
@@ -166,6 +173,7 @@ public:
 
 	int increment_num_plundered_pods(int increment);
 	int decrement_num_plundered_pods(int decrement);
+	void destroy();
 	int return_num_plundered_pods();
 
 	void process_ship_damage();
@@ -178,6 +186,7 @@ private:
 
 	vector<Ship_Object*> ships_engaging;
 	int major_array_id = 0;
+	int matrix_array_id = 0;
 	int ship_current_state = SHIP_STATE_IDLE;
 	bool active = false;
 
@@ -197,8 +206,9 @@ public:
 	enum swarm_states
 	{
 		SWARM_STATE_IDLE,
-		SWARM_STATE_ENGAGED,
-		SWARM_STATE_PLUNDERING
+		SWARM_STATE_COMBAT_ENGAGED,
+		SWARM_STATE_PLUNDERING,
+		SWARM_STATE_DEFENDING
 	};
 
 	Hive_Ship_Array();
@@ -206,33 +216,47 @@ public:
 	Ship_Object* add_ship_to_array(vec3 ship_location, vec3 ship_orbit_center);
 	void remove_ship_from_array(Ship_Object* ship);
 	Ship_Object* return_ship_in_array(int index);
+	int return_num_ships_in_swarm();
 	int return_ship_model_type();
 	int return_uniq_id();
 	int array_begin();
 	int array_end();
 	vec3 return_ship_array_color();
-	Hive_Ship_Array* return_engaged_ship_array();
 
 	int return_hive_array_state();
 	model_buffer_specs* return_loaded_ship_specs();
-	void set_engaged(bool engaged);
+	void set_swarm_engagement_target(Hive_Ship_Array* hive_ship_array);
 	void set_hive_engagement_target(Hive_Object* hive_target);
-	void set_ship_array_to_idle();
 	void set_array_state(int new_array_state);
+	void remove_swarm_engagement_target();
+	int return_current_state();
+	Ship_Object * return_random_active_ship();
+	Hive_Ship_Array* return_engaged_ship_array();
+	Hive_Pod_Object* find_hive_pod_engagement_focus();
 
 	void set_ship_array_damage(float damage);
 	float return_ship_array_damage();
-	Hive_Pod_Object* find_hive_pod_engagement_focus();
-	void send_ships_to_collect_enemy_hive_pods(Hive_Object* destroyed_hive);
-	void update_ships();
 
-	mat4* return_ships_model_matrices();
+	void update();
+
+	void update_ship_idle(Ship_Object * ship);
+
+	void update_ship_engaged(Ship_Object * ship);
+
+	void update_ship_plundering(Ship_Object * ship);
+
+	void update_ships_in_swarm();
+
+	void reset_all_ships_in_swarm();
+
+	mat4* update_all_ships_model_matrices();
+	void update_single_ship_model_matrix(Ship_Object * ship);
 	void update_ships_color_matrices();
 	vec3* return_ships_color_matrices();
 
-	int return_num_ships_in_swarm();
 	void increment_num_pods_to_add_to_hive(vec3 hive_color); // GOOD LORD THIS IS TEMPORARY
 	void decrement_num_pods_to_add_to_hive(int decrement);
+	mat4 * return_model_matrix_array();
 	int return_num_pods_to_add_to_hive();
 	vector<vec3>* return_pods_to_add_to_hive();
 
@@ -241,7 +265,7 @@ private:
 
 	int uniq_id;
 
-	int hive_array_state = SWARM_STATE_IDLE;
+	int swarm_array_state = SWARM_STATE_IDLE;
 	Hive_Ship_Array* ship_array_engagement_target = NULL;
 	Hive_Object* hive_engagement_target = NULL;
 

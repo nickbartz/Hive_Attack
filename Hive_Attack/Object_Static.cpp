@@ -303,6 +303,16 @@ void Hive_Pod_Object::set_pod_color(vec3 _pod_color)
 	pod_color = _pod_color;
 }
 
+void Hive_Pod_Object::set_current_matrix_pointer(int array_pointer)
+{
+	matrices_array_pointer = array_pointer;
+}
+
+int Hive_Pod_Object::return_current_matrix_pointer()
+{
+	return matrices_array_pointer;
+}
+
 vec3 Hive_Pod_Object::return_pod_color()
 {
 	return pod_color;
@@ -342,7 +352,9 @@ void Hive_Object::Init_Hive_Object(Service_Locator* _service_locator, vec3 initi
 
 	Hive_Color = _Hive_Color;
 
-	hive_ship_array.init_hive_ship_array(service_locator, Hive_Color, hive_damage, hive_ship_model);
+	Hive_Ship_Array new_hive_ship_array;
+	new_hive_ship_array.init_hive_ship_array(service_locator, Hive_Color, hive_damage, hive_ship_model);
+	hive_swarm_array.push_back(new_hive_ship_array);
 
 	hive_translation_vector = initial_location;
 
@@ -351,10 +363,18 @@ void Hive_Object::Init_Hive_Object(Service_Locator* _service_locator, vec3 initi
 	hive_pod_model = _hive_pod_model;
 }
 
-bool Hive_Object::check_engagement_target_fleet_destroyed()
+void Hive_Object::add_attacking_swarm(Hive_Ship_Array * attacking_swarm)
 {
-	if (hive_engagement_target->is_fleet_destroyed()) return true;
-	else return false;
+	attacking_swarms.push_back(attacking_swarm);
+
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
+		{
+			hive_swarm_array[i].set_array_state(Hive_Ship_Array::SWARM_STATE_DEFENDING);
+			hive_swarm_array[i].set_swarm_engagement_target(attacking_swarms.back());
+		}
+	}
 }
 
 void Hive_Object::extrude_new_octo(vec3 octo_color)
@@ -385,8 +405,6 @@ void Hive_Object::extrude_new_octo(vec3 octo_color)
 		array_index++;
 		if (array_index > num_current_hive_pods - 1) array_index = 0;
 	}
-
-
 }
 
 void Hive_Object::extrude_from_square(int array_index, vec3 octo_color)
@@ -435,17 +453,6 @@ void Hive_Object::extrude_from_hexagon(int array_index, vec3 octo_color)
 		face_num++;
 		if (face_num > 7) face_num = 0;
 	}
-}
-
-bool Hive_Object::is_engaged()
-{
-	return hive_is_engaged;
-}
-
-bool Hive_Object::is_fleet_destroyed()
-{
-	if (hive_ship_array.return_num_ships_in_swarm() == 0) return true;
-	else return false;
 }
 
 void Hive_Object::Manage_Obscurity(Hive_Pod_Object* octo)
@@ -513,7 +520,7 @@ void Hive_Object::register_new_hive_pod(vec3 local_translation,vec3 world_transl
 
 			register_new_hive_ship(&Hive_Pod_Array[i], ship_start_pos, ship_orbit_pos);
 			Manage_Obscurity(&Hive_Pod_Array[i]);
-			update_hive_pod_model_matrices();
+			update_all_hive_pod_model_matrices();
 			update_hive_pod_color_matrix();
 			break;
 		}
@@ -522,7 +529,7 @@ void Hive_Object::register_new_hive_pod(vec3 local_translation,vec3 world_transl
 
 void Hive_Object::register_new_hive_ship(Hive_Pod_Object* hive_pod_pointer, vec3 translation_vector, vec3 orbit_center)
 {
-	Ship_Object* new_ship = hive_ship_array.add_ship_to_array(translation_vector, orbit_center);
+	Ship_Object* new_ship = hive_swarm_array.back().add_ship_to_array(translation_vector, orbit_center);
 
 	hive_pod_pointer->set_hive_ship_pointer(new_ship);
 }
@@ -570,9 +577,32 @@ vec3 * Hive_Object::return_hive_pods_color_matrices()
 	return hive_pod_color_matrices;
 }
 
-Hive_Ship_Array * Hive_Object::return_hive_ship_array()
+Hive_Ship_Array * Hive_Object::return_strongest_defending_ship_array()
 {
-	return &hive_ship_array;
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_DEFENDING)
+		{
+			return &hive_swarm_array[i];
+		}
+	}
+
+	return NULL;
+}
+
+int Hive_Object::return_num_defending_swarms()
+{
+	int count = 0;
+
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i].return_num_ships_in_swarm() > 0 && hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_DEFENDING)
+		{
+			count++;
+		}
+	}
+
+	return count;
 }
 
 Hive_Object * Hive_Object::return_hive_engagement_target()
@@ -583,6 +613,16 @@ Hive_Object * Hive_Object::return_hive_engagement_target()
 vec3 Hive_Object::return_hive_translation_vector()
 {
 	return hive_translation_vector;
+}
+
+int Hive_Object::return_num_ship_arrays()
+{
+	return hive_swarm_array.size();
+}
+
+Hive_Ship_Array* Hive_Object::return_ship_array_by_num(int num)
+{
+	return &hive_swarm_array[num];
 }
 
 void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
@@ -599,41 +639,33 @@ void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
 	}
 }
 
-bool Hive_Object::set_hive_engagement_target(Hive_Object * _engagement_hive)
-{
-	if (_engagement_hive != NULL)
-	{
-		hive_engagement_target = _engagement_hive;
-		set_engaged(true);
-		hive_ship_array.set_hive_engagement_target(hive_engagement_target);
-		hive_ship_array.set_array_state(Hive_Ship_Array::SWARM_STATE_ENGAGED);
-		return true;
-	}
-	else return false;
-
-}
-
-void Hive_Object::set_engaged(bool engaged)
-{
-	hive_is_engaged = engaged;
-}
-
 void Hive_Object::update()
 {
-	// If the hive is engaged, check to see if the hive it is engaged with still has a fleet, if not, go send the ships to plunder
-	if (is_engaged() && check_engagement_target_fleet_destroyed())
-	{
-		return_hive_ship_array()->send_ships_to_collect_enemy_hive_pods(return_hive_engagement_target());
-	}
-
-	// Update the hives ship arrays
-	update_ship_arrays();
+	update_hive_swarms();
 
 	// Update the hive's pod arrays
 	update_pod_array();
 }
 
-void Hive_Object::update_hive_pod_model_matrices()
+void Hive_Object::update_hive_swarms()
+{
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		hive_swarm_array[i].update();
+
+		if (hive_swarm_array[i].return_num_pods_to_add_to_hive() > 0)
+		{
+			vector<vec3>* pods_to_add_to_hive = hive_swarm_array[i].return_pods_to_add_to_hive();
+			for (int i = 0; i < pods_to_add_to_hive->size(); i++)
+			{
+				extrude_new_octo(pods_to_add_to_hive->back());
+				pods_to_add_to_hive->pop_back();
+			}
+		}
+	}
+}
+
+void Hive_Object::update_all_hive_pod_model_matrices()
 {
 	int hive_pod_index = 0;
 
@@ -643,9 +675,15 @@ void Hive_Object::update_hive_pod_model_matrices()
 		if (new_hive_pod_object != NULL && new_hive_pod_object->is_active())
 		{
 			hive_pod_model_matrices[hive_pod_index] = new_hive_pod_object->return_current_model_matrix();
+			new_hive_pod_object->set_current_matrix_pointer(hive_pod_index);
 			hive_pod_index++;
 		}
 	}
+}
+
+void Hive_Object::update_single_hive_pod_model_matrix(Hive_Pod_Object* hive_pod)
+{
+	hive_pod_model_matrices[hive_pod->return_current_matrix_pointer()] = hive_pod->return_current_model_matrix();
 }
 
 void Hive_Object::update_hive_pod_color_matrix()
@@ -663,42 +701,9 @@ void Hive_Object::update_hive_pod_color_matrix()
 	}
 }
 
-void Hive_Object::update_ship_arrays()
-{
-	hive_ship_array.update_ships();
-
-	if (hive_ship_array.return_num_pods_to_add_to_hive() > 0)
-	{
-		vector<vec3>* pods_to_add_to_hive = hive_ship_array.return_pods_to_add_to_hive();
-
-		int num_pods_to_add = pods_to_add_to_hive->size();
-		
-		vec3 color = pods_to_add_to_hive->back();
-
-		extrude_new_octo(color);
-
-		pods_to_add_to_hive->pop_back();
-	}
-}
-
 void Hive_Object::update_pod_array()
 {
-	for (int i = 0; i < max_list_pointer; i++)
-	{
-		if (Hive_Pod_Array[i].is_active() && Hive_Pod_Array[i].return_hive_pod_health() <= 0.0f)
-		{
-			if (Hive_Pod_Array[i].return_hive_pod_health() <= 0.0f)
-			{
-				remove_hive_pod(&Hive_Pod_Array[i]);
-				update_hive_pod_model_matrices();
-				num_current_hive_pods--;
-			}
-			else if (Hive_Pod_Array[i].return_hive_ship_pointer() != NULL && Hive_Pod_Array[i].return_hive_ship_pointer()->get_health() <= 0.0f)
-			{
-				Hive_Pod_Array[i].set_hive_ship_pointer(NULL);
-			}
-		}
-	}
+
 }
 
 void Hive_Object::update_translation_matrix()
