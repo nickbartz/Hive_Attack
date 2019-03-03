@@ -421,7 +421,7 @@ void Render_Manager::computeMatricesFromInputs(GLFWwindow* window)
 	double currentTime = glfwGetTime();
 	float deltaTime = float(currentTime - lastTime);
 
-	//// Get mouse position
+	// Get mouse position
 	//double xpos, ypos;
 	//glfwGetCursorPos(window, &xpos, &ypos);
 

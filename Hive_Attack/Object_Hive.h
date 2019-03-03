@@ -11,13 +11,13 @@
 #include<iostream>
 
 #include<Render_Manager.h>
-#include<Object_Dynamic.h>
 
 using namespace std;
 using namespace glm;
 
 class Hive_Object;
 class Hive_Pod_Object;
+class Hive_Ship_Array;
 
 const int MAX_NUM_HIVE_PODS_PER_HIVE = 1000;
 
@@ -43,6 +43,17 @@ inline bool operator<(const Grid_Coord& p1, const Grid_Coord& p2) {
 	{
 		return p1.grid_z < p2.grid_z;
 	}
+}
+
+inline Grid_Coord operator+(const Grid_Coord& p1, const Grid_Coord& p2)
+{
+	Grid_Coord new_coord;
+
+	new_coord.grid_x = p1.grid_x + p2.grid_x;
+	new_coord.grid_y = p1.grid_y + p2.grid_y;
+	new_coord.grid_z = p1.grid_z + p2.grid_z;
+
+	return new_coord;
 }
 
 struct Triangle
@@ -220,93 +231,11 @@ private:
 	float d = sqrt(5);
 };
 
-class Hive_Pod_Object
-{
-public:
-	Hive_Pod_Object()
-	{
-	}
-
-	Grid_Coord octohedron_coordinates;
-	Octohedron_Model* base_octohedron;
-
-	vec3 scale_vector;
-	vec3 local_translation_vector;
-	vec3 world_translation_vector;
-	vec3 rotation_vector;
-
-	int index_hash = rand() % 100000;
-
-	void Init_Hive_Pod(Service_Locator* service_locator, glm::vec3 local_translation, vec3 world_translation, Grid_Coord base_grid_coords, Grid_Coord face_grid_offset, vec3 pod_color);
-
-	vec3 return_local_translation_vector();
-
-	vec3 return_world_translation_vector();
-
-	vec3 return_scaled_translation_vector();
-
-	Ship_Object* return_hive_ship_pointer();
-
-	void set_hive_ship_pointer(Ship_Object* ship_object);
-
-	Octohedron_Model* return_octohedron_base();
-
-	void update_translation(vec3 local_translation,vec3 world_translation);
-
-	void register_hive_ship(Ship_Object* hive_ship);
-
-	void take_damage(float damage);
-
-	float return_hive_pod_health();
-
-	bool is_active();
-
-	void set_active(bool active);
-
-	void set_major_array_id(int array_id);
-
-	void set_pod_is_being_plundered(bool is_being_plundered);
-
-	void set_pod_color(vec3 pod_color);
-
-	void set_current_matrix_pointer(int array_pointer);
-
-	int return_current_matrix_pointer();
-
-	vec3 return_pod_color();
-
-	int return_major_array_id();
-
-	mat4 return_current_model_matrix();
-
-	bool return_pod_is_being_plundered();
-
-private:
-	Service_Locator * service_locator;
-	Ship_Object* hive_ship_pointer = NULL;
-
-	bool pod_is_active = false;
-	int major_array_id = 0;
-	int matrices_array_pointer = 0;
-	float hive_pod_health = 100.0f;
-
-	bool pod_is_being_plundered = false;
-
-	mat4 ScaleMatrix = glm::mat4(1.0);;
-	mat4 Transform_Matrix = translate(vec3{0.0f,0.0f,0.0f});
-	mat4 RotationMatrix = glm::mat4(1.0);
-
-	vec3 pod_color = { 1.0f,1.0f,1.0f };
-};
-
 class Hive_Object
 {
 public:
 	Hive_Object();
 
-	Hive_Pod_Object Hive_Pod_Array[MAX_NUM_HIVE_PODS_PER_HIVE];
-	int num_current_hive_pods = 0;
-	int max_list_pointer = 1;
 
 	Hive_Object* hive_engagement_target = NULL;
 	bool hive_is_engaged = false;
@@ -325,6 +254,10 @@ public:
 
 	void add_attacking_swarm(Hive_Ship_Array* attacking_swarm);
 
+	void check_attacking_swarms();
+
+	void destroy();
+
 	void update_translation_matrix();
 
 	void extrude_new_octo(vec3 octo_color);
@@ -336,12 +269,14 @@ public:
 	void Manage_Obscurity(Hive_Pod_Object* octo);
 
 	void update_pod_array();
+	bool is_active();
+
 
 	vec3 return_hive_color();
 
 	int return_num_current_pods();
 
-	Hive_Pod_Object* return_hive_pod_at_array_num(int array_num);
+	int return_num_current_pods_not_currently_being_plundered();
 
 	Hive_Pod_Object* return_random_active_pod();
 
@@ -369,7 +304,15 @@ public:
 
 	Hive_Ship_Array* return_strongest_defending_ship_array();
 
+	int return_uniq_id();
+
 	int return_num_defending_swarms();
+
+	int return_num_defending_ships();
+
+	int return_num_idle_swarms();
+
+	void set_active(bool active);
 
 	void update_hive_swarms();
 
@@ -383,6 +326,13 @@ public:
 
 private:
 	Service_Locator * service_locator;
+	bool active = false;
+
+	int uniq_id = 0;
+
+	vector<Hive_Pod_Object*> Hive_Pod_Array;
+
+	int num_current_hive_pods = 0;
 
 	vector<Hive_Ship_Array> hive_swarm_array;
 

@@ -20,24 +20,30 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Memory_Manager.cpp" />
+    <ClCompile Include="Object_Hive_Pod.cpp" />
+    <ClCompile Include="Object_Hive_Ship.cpp" />
+    <ClCompile Include="Object_Projectile.cpp" />
     <ClCompile Include="Render_Manager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objloader.cpp" />
     <ClCompile Include="Gameplay_Manager.cpp" />
-    <ClCompile Include="Object_Static.cpp" />
-    <ClCompile Include="Object_Dynamic.cpp" />
+    <ClCompile Include="Object_Hive.cpp" />
+    <ClCompile Include="Object_Hive_Swarm.cpp" />
     <ClCompile Include="Service_Locator.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="vboindexer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Memory_Manager.h" />
+    <ClInclude Include="Object_Hive_Pod.h" />
+    <ClInclude Include="Object_Hive_Ship.h" />
+    <ClInclude Include="Object_Projectile.h" />
     <ClInclude Include="Render_Manager.h" />
     <ClInclude Include="Global_Render_Variables.h" />
-    <ClInclude Include="Object_Static.h" />
+    <ClInclude Include="Object_Hive.h" />
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="Gameplay_Manager.h" />
-    <ClInclude Include="Object_Dynamic.h" />
+    <ClInclude Include="Object_Hive_Swarm.h" />
     <ClInclude Include="Service_Locator.h" />
     <ClInclude Include="texture.hpp" />
     <ClInclude Include="vboindexer.hpp" />
