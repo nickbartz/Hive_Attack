@@ -50,11 +50,6 @@ float Ship_Object::calculate_damage_from_engaging_ships()
 	return damage;
 }
 
-void Ship_Object::check_nearby_targets()
-{
-
-}
-
 vec3 Ship_Object::calculate_direction_vector_for_goal(vec3 current_transform, vec3 target_transform, vec3 current_direction_vector, float turning_circle)
 {
 	float needed_rotation = calculate_total_rotation_from_goal(current_transform, target_transform);

@@ -130,3 +130,12 @@ void Memory_Manager::Deallocate_Hive_Object(Hive_Object * hive_pointer)
 		}
 	}
 }
+
+Hive_Ship_Array * Memory_Manager::new_hive_ship_array()
+{
+	return new Hive_Ship_Array;
+}
+
+void Memory_Manager::Deallocate_Hive_Ship_Array(Hive_Ship_Array * hive_ship_array)
+{
+}

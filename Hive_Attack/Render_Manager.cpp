@@ -505,8 +505,6 @@ void Render_Manager::handle_mouse_input(GLFWwindow* window, int button, int acti
 
 		glm::vec3 new_point = position + ray_wor * scalar;
 
-		cout << new_point.x << ", " << new_point.y << ", " << new_point.z << endl;
-
 		service_locator->return_gameplay_manager()->Handle_Mouse_Click(new_point.x, new_point.z);
 	}
 }

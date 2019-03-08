@@ -20,6 +20,7 @@
 #include<Memory_Manager.h>
 #include<Object_Projectile.h>
 #include<Object_Hive.h>
+#include<Object_Hive_Swarm.h>
 
 using namespace std;
 using namespace glm;
@@ -37,9 +38,9 @@ void Gameplay_Manager::Init(Service_Locator* _service_locator)
 	load_base_ship();
 	load_base_projectile();
 
-	//Create_New_Hive({ 0.0f,0.0f,0.0f }, { 0.75,0.75,0.0 }, 0.02, &hive_pod, &simple_ship, 0);
+	Create_New_Hive({ 0.0f,0.0f,0.0f }, { 0.75,0.75,0.0 }, 0.02, &hive_pod, &simple_ship, 2);
 
-	//Create_New_Hive({ 20.0f,0.0f,0.0f }, { 0.2,0.75,0.2 }, 0.02, &hive_pod, &simple_ship, 0);
+	//Create_New_Hive({ 40.0f,0.0f,0.0f }, { 0.2,0.75,0.2 }, 0.02, &hive_pod, &simple_ship, 3);
 
 	if (true)
 	{
@@ -52,8 +53,8 @@ void Gameplay_Manager::Init(Service_Locator* _service_locator)
 			{
 				if (!(i == 1 && p == 1))
 				{
-					ship_x.push_back((i - 1) * 20);
-					ship_z.push_back((p - 1) * 20);
+					ship_x.push_back((i - 1) * 80);
+					ship_z.push_back((p - 1) * 80);
 				}
 			}
 
@@ -89,38 +90,17 @@ void Gameplay_Manager::cleanup_scene_graph()
 	}
 }
 
-void Gameplay_Manager::choose_swarm_targets(Hive_Object* hive_object)
+void Gameplay_Manager::Create_New_Projectile(vec3 start_position, vec3 end_position)
 {
-	for (int i = 0; i < hive_object->return_num_ship_arrays(); i++)
+	if (projectile_array.size() < 1000)
 	{
-		Hive_Ship_Array* ship_array = hive_object->return_ship_array_by_num(i);
+		Projectile* new_projectile = service_locator->return_memory_manager()->new_projectile();
 
-		if (ship_array != NULL && ship_array->return_hive_array_state() == Hive_Ship_Array::SWARM_STATE_IDLE && ship_array->return_num_ships_in_swarm() > 0)
-		{
-			Hive_Object* hive_target  = NULL;
-			float min_distance_found = -1.0;
-			int min_ships_found = -1;
+		new_projectile->Init(start_position, end_position);
 
-			for (int p = 0; p < Hive_Object_Array.size(); p++)
-			{
-				float hive_distance = distance(hive_object->return_hive_translation_vector(), Hive_Object_Array[p]->return_hive_translation_vector());
-				int num_ships_in_own_swarm = ship_array->return_num_ships_in_swarm();
-				int num_ships_in_target_swarm = Hive_Object_Array[p]->return_num_defending_ships();
+		projectile_array.push_back(new_projectile);
 
-
-				if (Hive_Object_Array[p] != hive_object && ((hive_distance < min_distance_found || min_distance_found < 0) || (num_ships_in_target_swarm < min_ships_found || min_ships_found < 0)))
-				{
-					min_distance_found = hive_distance;
-					min_ships_found = num_ships_in_target_swarm;
-					hive_target = Hive_Object_Array[p];
-				}
-			}
-			
-			if (hive_target != NULL)
-			{
-				Set_Hive_Swarm_Engagement_Target(ship_array, hive_target);
-			}
-		}
+		Update_Projectile_Color_Matrices();
 	}
 }
 
@@ -191,7 +171,11 @@ void Gameplay_Manager::Handle_Mouse_Click(double x_pos, double y_pos)
 
 		if (abs(hive_translation_vector.x - x_pos) < 3.0 && abs(hive_translation_vector.z - y_pos) < 3.0)
 		{
-			Set_Hive_Swarm_Engagement_Target(Hive_Object_Array[0]->return_ship_array_by_num(0), Hive_Object_Array[i]);
+			Hive_Ship_Array* split_swarm = Hive_Object_Array[0]->Split_New_Swarm_From_Idle_Swarm(3);
+			if (split_swarm != NULL)
+			{
+				split_swarm->change_swarm_target(Hive_Object_Array[i]->return_ship_array_by_num(0), NULL);
+			}
 			return;
 		}
 	}
@@ -251,18 +235,32 @@ void Gameplay_Manager::load_base_projectile()
 	simple_projectile = service_locator->return_render_manager()->create_object_buffers(ship_indexed_vertices, ship_indexed_uvs, ship_indexed_normals, ship_indices);
 }
 
-void Gameplay_Manager::Create_New_Projectile(vec3 start_position, vec3 end_position)
+Hive_Ship_Array* Gameplay_Manager::Return_Nearest_Swarm(Hive_Object* base_object)
 {
-	if (projectile_array.size() < 1000)
+	Hive_Ship_Array* swarm = NULL;
+	float distance = -1.0;
+	vec3 hive_location = base_object->return_hive_translation_vector();
+
+	for (int i = 0; i < Hive_Object_Array.size(); i++)
 	{
-		Projectile* new_projectile = service_locator->return_memory_manager()->new_projectile();
+		if (Hive_Object_Array[i] != base_object)
+		{
+			Hive_Ship_Array* hive_swarm = Hive_Object_Array[i]->return_nearest_hive_array(hive_location);
 
-		new_projectile->Init(start_position, end_position);
+			if (hive_swarm != NULL)
+			{
+				float hive_distance = glm::distance(hive_swarm->return_current_location(), hive_location);
 
-		projectile_array.push_back(new_projectile);
-
-		Update_Projectile_Color_Matrices();
+				if (hive_distance < distance || distance == -1.0)
+				{
+					swarm = hive_swarm;
+					distance = hive_distance;
+				}
+			}
+		}
 	}
+
+	return swarm;
 }
 
 void Gameplay_Manager::Update_Projectile_Model_Matrices()
@@ -287,14 +285,6 @@ void Gameplay_Manager::Update_Projectile_Color_Matrices()
 	}
 }
 
-void Gameplay_Manager::Set_Hive_Swarm_Engagement_Target(Hive_Ship_Array* swarm, Hive_Object* hive_engagement_target)
-{
-	swarm->set_hive_engagement_target(hive_engagement_target);
-	swarm->set_array_state(Hive_Ship_Array::SWARM_STATE_COMBAT_ENGAGED);
-
-	hive_engagement_target->add_attacking_swarm(swarm);
-}
-
 void Gameplay_Manager::update_scene_graph()
 {
 	for (int i = 0; i < Hive_Object_Array.size(); i++)
@@ -310,12 +300,22 @@ void Gameplay_Manager::update_scene_graph()
 				Hive_Object_Array.erase(Hive_Object_Array.begin() + i);
 			}
 			else
-			{
-				if (hive_object->return_num_idle_swarms() > 0)
+			{	
+				// IF YOU'RE BEING ATTACKED, HANDLE BEING ATTACKED
+				if (!Hive_Respond_To_Nearby_Threats(hive_object))
 				{
-					choose_swarm_targets(hive_object);
+					// IF THERE ARE PODS AROUND AVAILABLE TO PLUNDER, GO GET THEM
+					if (!Hive_Respond_To_Available_Plundering_Opportunities(hive_object))
+					{
+						if (!Hive_Respond_To_Nearby_Conquest_Opportunities(hive_object))
+						{
+
+						}
+					}
 				}
-				
+
+
+
 				hive_object->update();
 			}
 		}
@@ -335,5 +335,57 @@ void Gameplay_Manager::update_scene_graph()
 	Update_Projectile_Model_Matrices();
 }
 
+bool Gameplay_Manager::Hive_Respond_To_Available_Plundering_Opportunities(Hive_Object* hive_object)
+{
+	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	{
+		if (Hive_Object_Array[i]->return_num_ship_arrays() <= 0)
+		{
+			hive_object->target_add_plunderable_hive(Hive_Object_Array[i]);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool Gameplay_Manager::Hive_Respond_To_Nearby_Threats(Hive_Object* hive_object)
+{
+	if (!first_run)
+	{
+		Hive_Ship_Array* nearest_hive_swarm = Return_Nearest_Swarm(hive_object);
+
+		if (nearest_hive_swarm != NULL && nearest_hive_swarm->is_active())
+		{
+			if (glm::distance(nearest_hive_swarm->return_current_location(), hive_object->return_hive_translation_vector()) <= hive_object->return_aware_radius())
+			{
+				hive_object->target_respond_to_attacking_swarm(nearest_hive_swarm);
+				return true;
+			}
+		}
+	}
+	else first_run = false;
+
+	return false;
+}
+
+bool Gameplay_Manager::Hive_Respond_To_Nearby_Conquest_Opportunities(Hive_Object* hive_object)
+{
+	for (int i = 0; i < Hive_Object_Array.size(); i++)
+	{
+		if (Hive_Object_Array[i]->return_total_ships_in_swarm() <= hive_object->return_total_ships_in_swarm())
+		{
+			hive_object->target_add_conquerable_swarm();
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Gameplay_Manager::choose_swarm_targets(Hive_Object* hive_object)
+{
+
+}
 
 

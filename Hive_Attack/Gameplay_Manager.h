@@ -29,6 +29,10 @@ public:
 
 	void update_scene_graph();
 
+
+
+	void Create_New_Projectile(vec3 start_position, vec3 end_position);
+
 	void Create_New_Hive(vec3 location, vec3 color, float damage, model_buffer_specs* pod_model, model_buffer_specs* ship_model, int num_octos);
 
 	void cleanup_scene_graph();
@@ -45,22 +49,28 @@ public:
 
 	void Handle_Mouse_Click(double x_pos, double y_pos);
 
+	bool Hive_Respond_To_Nearby_Threats(Hive_Object* hive_object);
+
+	bool Hive_Respond_To_Nearby_Conquest_Opportunities(Hive_Object * hive_object);
+
+	bool Hive_Respond_To_Available_Plundering_Opportunities(Hive_Object * hive_object);
+
 	void load_base_octo();
 
 	void load_base_ship();
 
 	void load_base_projectile();
 
-	void Create_New_Projectile(vec3 start_position, vec3 end_position);
+	Hive_Ship_Array* Return_Nearest_Swarm(Hive_Object* base_object);
 
 	void Update_Projectile_Model_Matrices();
 
 	void Update_Projectile_Color_Matrices();
 
-	void Set_Hive_Swarm_Engagement_Target(Hive_Ship_Array* swarm, Hive_Object* hive_engagement_target);
-
 private:
 	Service_Locator * service_locator;
+
+	bool first_run = true;
 
 	vector<Hive_Object*> Hive_Object_Array;
 

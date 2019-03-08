@@ -235,15 +235,11 @@ class Hive_Object
 {
 public:
 	Hive_Object();
-
-
-	Hive_Object* hive_engagement_target = NULL;
 	bool hive_is_engaged = false;
 
 	map<Grid_Coord, Hive_Pod_Object*> Pod_Grid_Map;
 
 	vec3 hive_translation_vector;
-
 	mat4 ScaleMatrix = glm::mat4(1.0);
 	mat4 TranslationMatrix = glm::mat4(1.0);
 	mat4 RotationMatrix = glm::mat4(0.0);
@@ -252,9 +248,11 @@ public:
 
 	void Init_Hive_Object(Service_Locator* service_locator, vec3 initial_location, vec3 Hive_Color, float ship_damage, model_buffer_specs* hive_pod_model, model_buffer_specs* hive_ship_model);
 
-	void add_attacking_swarm(Hive_Ship_Array* attacking_swarm);
+	Hive_Ship_Array * Create_New_Swarm(vec3 Hive_Color, float hive_damage, model_buffer_specs * hive_ship_model);
 
-	void check_attacking_swarms();
+	void coalesce_idle_swarms();
+
+	Hive_Ship_Array* Split_New_Swarm_From_Idle_Swarm(int num_ships);
 
 	void destroy();
 
@@ -271,12 +269,13 @@ public:
 	void update_pod_array();
 	bool is_active();
 
-
 	vec3 return_hive_color();
 
 	int return_num_current_pods();
 
 	int return_num_current_pods_not_currently_being_plundered();
+
+	Hive_Ship_Array* return_nearest_hive_array(vec3 location);
 
 	Hive_Pod_Object* return_random_active_pod();
 
@@ -288,29 +287,31 @@ public:
 
 	void register_new_hive_ship(Hive_Pod_Object* hive_pod_pointer, vec3 translation_vector, vec3 orbit_center);
 
+	float return_aware_radius();
+
 	mat4 return_model_matrix();
 
 	mat4* return_hive_pods_model_matrices();
 
 	vec3 * return_hive_pods_color_matrices();
 
-	Hive_Object* return_hive_engagement_target();
-
 	vec3 return_hive_translation_vector();
 
 	int return_num_ship_arrays();
 
-	Hive_Ship_Array* return_ship_array_by_num(int num);
+	int return_total_ships_in_swarm();
 
-	Hive_Ship_Array* return_strongest_defending_ship_array();
+	Hive_Ship_Array* return_ship_array_by_num(int num);
 
 	int return_uniq_id();
 
-	int return_num_defending_swarms();
-
-	int return_num_defending_ships();
-
 	int return_num_idle_swarms();
+
+	void target_respond_to_attacking_swarm(Hive_Ship_Array* attacking_swarm);
+
+	void target_add_plunderable_hive(Hive_Object* hive_object);
+
+	void target_add_conquerable_swarm(Hive_Ship_Array* swarm);
 
 	void set_active(bool active);
 
@@ -332,13 +333,15 @@ private:
 
 	vector<Hive_Pod_Object*> Hive_Pod_Array;
 
+	float aware_radius = 20.0f;
+	float Hive_Damage = 0.0;
 	int num_current_hive_pods = 0;
 
-	vector<Hive_Ship_Array> hive_swarm_array;
-
-	vector<Hive_Ship_Array*> attacking_swarms;
+	vector<Hive_Ship_Array*> hive_swarm_array;
 
 	model_buffer_specs * hive_pod_model = NULL;
+	model_buffer_specs* Hive_Ship_Model = NULL;
+
 	mat4 hive_pod_model_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
 	vec3 hive_pod_color_matrices[MAX_NUM_HIVE_PODS_PER_HIVE];
 

@@ -220,13 +220,11 @@ void Hive_Object::Init_Hive_Object(Service_Locator* _service_locator, vec3 initi
 	RotationMatrix = glm::toMat4(MyQuaternion);
 
 	Hive_Color = _Hive_Color;
-
-	// ADD THIS TO THE MEMORY MANAGER
-	Hive_Ship_Array new_hive_ship_array;
-	new_hive_ship_array.init_hive_ship_array(service_locator, Hive_Color, hive_damage, hive_ship_model);
-	hive_swarm_array.push_back(new_hive_ship_array);
-
+	Hive_Damage = hive_damage;
+	Hive_Ship_Model = hive_ship_model;
 	hive_translation_vector = initial_location;
+
+	Create_New_Swarm(Hive_Color, hive_damage, hive_ship_model);
 
 	register_new_hive_pod({ 0.0,0.0,0.0 }, hive_translation_vector, { 0,0,0 }, { 0,0,0 }, Hive_Color);
 
@@ -235,31 +233,44 @@ void Hive_Object::Init_Hive_Object(Service_Locator* _service_locator, vec3 initi
 	uniq_id = rand() % 10000;
 }
 
-void Hive_Object::add_attacking_swarm(Hive_Ship_Array * attacking_swarm)
+Hive_Ship_Array* Hive_Object::Create_New_Swarm(vec3 Hive_Color, float hive_damage, model_buffer_specs* hive_ship_model)
 {
-	if (find(attacking_swarms.begin(), attacking_swarms.end(), attacking_swarm) == attacking_swarms.end()) 
-	{
-		attacking_swarms.push_back(attacking_swarm);
-	}
+	// ADD THIS TO THE MEMORY MANAGER
+	Hive_Ship_Array* new_hive_ship_array = service_locator->return_memory_manager()->new_hive_ship_array();
+	new_hive_ship_array->init_hive_ship_array(service_locator, Hive_Color, hive_damage, hive_ship_model);
+	hive_swarm_array.push_back(new_hive_ship_array);
+
+	return new_hive_ship_array;
+}
+
+void Hive_Object::coalesce_idle_swarms()
+{
+	Hive_Ship_Array* base_idle_array = NULL;
 
 	for (int i = 0; i < hive_swarm_array.size(); i++)
 	{
-		if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE || hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_PLUNDERING)
+		if (hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
 		{
+			if (base_idle_array == NULL)
+			{
+				base_idle_array = hive_swarm_array[i];
+			}
+			else
+			{
+				for (int p = 0; p < hive_swarm_array[i]->return_num_ships_in_swarm(); p++)
+				{
+					Ship_Object* new_ship = hive_swarm_array[i]->return_ship_by_array_num(p);
 
-			hive_swarm_array[i].set_array_state(Hive_Ship_Array::SWARM_STATE_DEFENDING);
-			hive_swarm_array[i].set_swarm_engaged_ship_array(attacking_swarms.back());
-		}
-	}
-}
+					if (new_ship != NULL)
+					{
+						base_idle_array->add_existing_ship_to_array(new_ship);
+						hive_swarm_array[i]->remove_ship_from_array(new_ship);
+					}
+				}
 
-void Hive_Object::check_attacking_swarms()
-{
-	for (int i = 0; i < attacking_swarms.size(); i++)
-	{
-		if (attacking_swarms[i]->return_num_ships_in_swarm() <= 0)
-		{
-			attacking_swarms.erase(attacking_swarms.begin() + i);
+				hive_swarm_array.erase(hive_swarm_array.begin() + i);
+				break;
+			}
 		}
 	}
 }
@@ -270,7 +281,7 @@ void Hive_Object::destroy()
 
 	for (int i = 0; i < hive_swarm_array.size(); i++)
 	{
-		hive_swarm_array[i].destroy();
+		hive_swarm_array[i]->destroy();
 	}
 }
 
@@ -416,9 +427,19 @@ void Hive_Object::register_new_hive_pod(vec3 local_translation,vec3 world_transl
 
 void Hive_Object::register_new_hive_ship(Hive_Pod_Object* hive_pod_pointer, vec3 translation_vector, vec3 orbit_center)
 {
-	Ship_Object* new_ship = hive_swarm_array.back().add_ship_to_array(translation_vector, orbit_center);
+	if (hive_swarm_array.size() <= 0)
+	{
+		Create_New_Swarm(Hive_Color, Hive_Damage, Hive_Ship_Model);
+	}
 
+	Ship_Object* new_ship = hive_swarm_array.back()->add_new_ship_to_array(translation_vector, orbit_center);
 	hive_pod_pointer->register_hive_ship(new_ship);
+
+}
+
+float Hive_Object::return_aware_radius()
+{
+	return aware_radius;
 }
 
 vec3 Hive_Object::return_hive_color()
@@ -441,6 +462,25 @@ int Hive_Object::return_num_current_pods_not_currently_being_plundered()
 	}
 
 	return count;
+}
+
+Hive_Ship_Array * Hive_Object::return_nearest_hive_array(vec3 location)
+{
+	Hive_Ship_Array* nearest_array = NULL;
+	float distance = -1.0;
+
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		float swarm_distance = glm::distance(location, hive_swarm_array[i]->return_current_location());
+
+		if (swarm_distance < distance || distance == -1.0)
+		{
+			nearest_array = hive_swarm_array[i];
+			distance = swarm_distance;
+		}
+	}
+
+	return nearest_array;
 }
 
 Hive_Pod_Object * Hive_Object::return_random_active_pod()
@@ -471,19 +511,6 @@ vec3 * Hive_Object::return_hive_pods_color_matrices()
 	return hive_pod_color_matrices;
 }
 
-Hive_Ship_Array * Hive_Object::return_strongest_defending_ship_array()
-{
-	for (int i = 0; i < hive_swarm_array.size(); i++)
-	{
-		if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_DEFENDING)
-		{
-			return &hive_swarm_array[i];
-		}
-	}
-
-	return NULL;
-}
-
 int Hive_Object::return_uniq_id()
 {
 	return uniq_id;
@@ -494,59 +521,19 @@ bool Hive_Object::is_active()
 	return active;
 }
 
-int Hive_Object::return_num_defending_swarms()
-{
-	int count = 0;
-
-	for (int i = 0; i < hive_swarm_array.size(); i++)
-	{
-		if (hive_swarm_array[i].return_num_ships_in_swarm() > 0 && hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_DEFENDING)
-		{
-			count++;
-		}
-	}
-
-	return count;
-}
-
-int Hive_Object::return_num_defending_ships()
-{
-	int count = 0;
-
-	for (int i = 0; i < hive_swarm_array.size(); i++)
-	{
-		if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_DEFENDING || hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
-		{
-			count+= hive_swarm_array[i].return_num_ships_in_swarm();
-		}
-	}
-
-	return count;
-}
-
 int Hive_Object::return_num_idle_swarms()
 {
 	int count = 0;
 
 	for (int i = 0; i < hive_swarm_array.size(); i++)
 	{
-		if (hive_swarm_array[i].return_hive_array_state() == Hive_Ship_Array::SWARM_STATE_IDLE && hive_swarm_array[i].return_num_ships_in_swarm() > 0)
+		if (hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE && hive_swarm_array[i]->return_num_ships_in_swarm() > 0)
 		{
 			count++;
 		}
 	};
 
 	return count;
-}
-
-void Hive_Object::set_active(bool _active)
-{
-	active = _active;
-}
-
-Hive_Object * Hive_Object::return_hive_engagement_target()
-{
-	return hive_engagement_target;
 }
 
 vec3 Hive_Object::return_hive_translation_vector()
@@ -559,9 +546,21 @@ int Hive_Object::return_num_ship_arrays()
 	return hive_swarm_array.size();
 }
 
+int Hive_Object::return_total_ships_in_swarm()
+{
+	int count = 0;
+
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		count += hive_swarm_array[i]->return_num_ships_in_swarm();
+	}
+
+	return count;
+}
+
 Hive_Ship_Array* Hive_Object::return_ship_array_by_num(int num)
 {
-	return &hive_swarm_array[num];
+	return hive_swarm_array[num];
 }
 
 void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
@@ -579,36 +578,111 @@ void Hive_Object::remove_hive_pod(Hive_Pod_Object* hive_pod)
 	}
 }
 
+void Hive_Object::set_active(bool _active)
+{
+	active = _active;
+}
+
+Hive_Ship_Array * Hive_Object::Split_New_Swarm_From_Idle_Swarm(int num_ships)
+{
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
+		{
+			if (hive_swarm_array[i]->return_num_ships_in_swarm() <= num_ships)
+			{
+				return hive_swarm_array[i];
+			}
+			else
+			{
+				Hive_Ship_Array* new_swarm = Create_New_Swarm(Hive_Color, Hive_Damage, Hive_Ship_Model);
+
+				// THIS IS AWKWARD CONSIDER CHANGING 
+				for (int p = 0; p < num_ships; p++)
+				{
+					Ship_Object* transferred_ship = hive_swarm_array[i]->return_ship_by_array_num(0);
+
+					new_swarm->add_existing_ship_to_array(transferred_ship);
+					hive_swarm_array[i]->remove_ship_from_array(transferred_ship);
+				}
+				return new_swarm;
+			}
+
+			break;
+		}
+	}
+
+	return NULL;
+}
+
+
+void Hive_Object::target_respond_to_attacking_swarm(Hive_Ship_Array * attacking_swarm)
+{
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i]->return_num_ships_in_swarm() > 0 && hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
+		{
+			if (attacking_swarm != NULL && attacking_swarm->is_active())
+			{
+				hive_swarm_array[i]->change_swarm_target(attacking_swarm, NULL);
+			}
+		}
+	}
+}
+
+void Hive_Object::target_add_plunderable_hive(Hive_Object * hive_object)
+{
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i]->return_num_ships_in_swarm() > 0 && hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
+		{
+			if (hive_object != NULL && hive_object->is_active())
+			{
+				hive_swarm_array[i]->change_swarm_target(NULL, hive_object);
+			}
+		}
+	}
+}
+
+void Hive_Object::target_add_conquerable_swarm(Hive_Ship_Array * swarm)
+{
+	for (int i = 0; i < hive_swarm_array.size(); i++)
+	{
+		if (hive_swarm_array[i]->return_num_ships_in_swarm() > 0 && hive_swarm_array[i]->return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE)
+		{
+			if (swarm != NULL && swarm->is_active())
+			{
+				hive_swarm_array[i]->change_swarm_target(swarm, NULL);
+			}
+		}
+	}
+}
+
 void Hive_Object::update()
 {
 	update_hive_swarms();
 
-	// Update the hive's pod arrays
 	update_pod_array();
 }
 
 void Hive_Object::update_hive_swarms()
 {
+	if (hive_swarm_array.size() > 1) coalesce_idle_swarms();
+
 	for (int i = 0; i < hive_swarm_array.size(); i++)
 	{
-		if (hive_swarm_array[i].return_num_ships_in_swarm() > 0)
+		if (hive_swarm_array[i]->return_num_ships_in_swarm() <= 0)
 		{
-			check_attacking_swarms();
+			hive_swarm_array.erase(hive_swarm_array.begin() + i);
+			break;
+		}
+		else
+		{
+			hive_swarm_array[i]->update();
 
-			if (attacking_swarms.size() > 0)
+			if (hive_swarm_array[i]->return_num_pods_to_add_to_hive() > 0)
 			{
-				if (hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_IDLE || hive_swarm_array[i].return_current_state() == Hive_Ship_Array::SWARM_STATE_PLUNDERING)
-				{
-					hive_swarm_array[i].set_array_state(Hive_Ship_Array::SWARM_STATE_DEFENDING);
-					hive_swarm_array[i].set_swarm_engaged_ship_array(attacking_swarms.back());
-				}
-			}
-
-			hive_swarm_array[i].update();
-
-			if (hive_swarm_array[i].return_num_pods_to_add_to_hive() > 0)
-			{
-				vector<vec3>* pods_to_add_to_hive = hive_swarm_array[i].return_pods_to_add_to_hive();
+				vector<vec3>* pods_to_add_to_hive = hive_swarm_array[i]->return_pods_to_add_to_hive();
 				for (int i = 0; i < pods_to_add_to_hive->size(); i++)
 				{
 					extrude_new_octo(pods_to_add_to_hive->back());
@@ -663,7 +737,6 @@ void Hive_Object::update_pod_array()
 
 		if (Hive_Pod_Array[i]->is_able_to_create_ship())
 		{
-			cout << "creating new ship" << endl;
 			register_new_hive_ship(Hive_Pod_Array[i], Hive_Pod_Array[i]->return_world_translation_vector(), Hive_Pod_Array[i]->return_world_translation_vector());
 		}
 	}

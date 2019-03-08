@@ -26,45 +26,45 @@ public:
 	enum swarm_states
 	{
 		SWARM_STATE_IDLE,
-		SWARM_STATE_COMBAT_ENGAGED,
-		SWARM_STATE_PLUNDERING,
-		SWARM_STATE_DEFENDING
+		SWARM_STATE_SWARM_TARGET,
+		SWARM_STATE_HIVE_TARGET
 	};
 
-	Hive_Ship_Array();
+	Hive_Ship_Array();	
 	void init_hive_ship_array(Service_Locator* service_locator, vec3 ship_color, float ship_damage, model_buffer_specs* loaded_ship_specs);
 	void destroy();
-	Ship_Object* add_ship_to_array(vec3 ship_location, vec3 ship_orbit_center);
+	int return_uniq_id();
+
+	Ship_Object* add_new_ship_to_array(vec3 ship_location, vec3 ship_orbit_center);
+	void add_existing_ship_to_array(Ship_Object* ship);
 	void remove_ship_from_array(Ship_Object* ship);
+	void delete_ship_from_array(Ship_Object* ship);
 	int return_num_ships_in_swarm();
 	int return_ship_model_type();
-	int return_uniq_id();
-	vec3 return_ship_array_color();
+	Ship_Object * return_random_active_ship();
+	Ship_Object* return_ship_by_array_num(int array_num);
 
-	int return_hive_array_state();
+	vec3 return_ship_array_color();
 	bool is_active();
 	model_buffer_specs* return_loaded_ship_specs();
-	void set_swarm_engaged_ship_array(Hive_Ship_Array* hive_ship_array);
-	void set_hive_engagement_target(Hive_Object* hive_target);
-	void set_array_state(int new_array_state);
+
+	void change_swarm_target(Hive_Ship_Array * hive_ship_array, Hive_Object * hive_object);
 	void remove_swarm_engagement_target();
 	int return_current_state();
-	Ship_Object * return_random_active_ship();
-	Hive_Ship_Array* return_engaged_ship_array();
+
+	Hive_Ship_Array* return_swarm_target();
 	Hive_Pod_Object* find_hive_pod_engagement_focus();
+	Hive_Object* return_hive_target();
+	vec3 return_current_location();
 
 	void set_ship_array_damage(float damage);
 	float return_ship_array_damage();
 
-	void update();
-
 	void update_ship_idle(Ship_Object * ship);
-
 	void update_ship_engaged(Ship_Object * ship);
-
 	void update_ship_plundering(Ship_Object * ship);
 
-	void update_ships_in_swarm();
+	void update();
 
 	void reset_all_ships_in_swarm();
 
@@ -84,13 +84,15 @@ public:
 private:
 	Service_Locator * service_locator;
 
+	vec3 current_swarm_location;
+
 	bool active = false;
 
 	int uniq_id;
 
 	int swarm_array_state = SWARM_STATE_IDLE;
-	Hive_Ship_Array* ship_array_engagement_target = NULL;
-	Hive_Object* hive_engagement_target = NULL;
+	Hive_Ship_Array* ship_array_target = NULL;
+	Hive_Object* hive_target = NULL;
 
 	vector<Ship_Object*> Ship_Object_Array;
 	int ship_model_type;
@@ -103,4 +105,9 @@ private:
 	model_buffer_specs* loaded_ship_specs;
 	mat4 ship_model_matrices[MAX_SHIPS_PER_HIVE];
 	vec3 ship_color_matrices[MAX_SHIPS_PER_HIVE];
+
+	// INTERNAL SWARM AI FUNCTIONS
+	bool check_swarm_target();
+	bool check_hive_target();
+
 };

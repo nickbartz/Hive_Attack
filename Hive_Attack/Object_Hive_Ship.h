@@ -12,12 +12,6 @@ public:
 		SHIP_STATE_CARRYING_POD
 	};
 
-	enum ship_movement_state
-	{
-		SHIP_MOVEMENT_PURSUING,
-		SHIP_MOVEMENT_PURSUED
-	};
-
 	void Init(Service_Locator* service_locator, glm::vec3 start_location, vec3 _orbit_location);
 
 	void add_engaged_ship(Ship_Object* ship_object);
@@ -25,7 +19,6 @@ public:
 	float calculate_distance_from_orbit_location();
 	float calculate_total_rotation_from_goal(vec3 current_position, vec3 goal_position);
 	float calculate_damage_from_engaging_ships();
-	void check_nearby_targets();
 
 	vec3 calculate_direction_vector_for_goal(vec3 current_transform, vec3 target_transform, vec3 current_direction_vector, float turning_circle);
 

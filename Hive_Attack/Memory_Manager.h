@@ -5,6 +5,7 @@ class Projectile;
 class Ship_Object;
 class Hive_Pod_Object;
 class Hive_Object;
+class Hive_Ship_Array;
 
 class Memory_Manager
 {
@@ -23,6 +24,9 @@ public:
 
 	Hive_Object* new_hive_object();
 	void Deallocate_Hive_Object(Hive_Object* hive_pointer);
+
+	Hive_Ship_Array* new_hive_ship_array();
+	void Deallocate_Hive_Ship_Array(Hive_Ship_Array* hive_ship_array);
 
 private:
 	Projectile* projectile_array;
